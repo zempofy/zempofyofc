@@ -1,0 +1,276 @@
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+/* ===== TEMA ESCURO (padrão) ===== */
+:root, [data-tema="escuro"] {
+  --verde: #22C55E;
+  --verde-escuro: #1A6B3C;
+  --verde-vivo: #22C55E;
+  --verde-claro: #DCFCE7;
+  --verde-0F: #0F3D22;
+
+  --fundo: #080C0A;
+  --sidebar: #111714;
+  --card: #111714;
+  --card-hover: #1a2420;
+  --input: #1E2820;
+  --input-2: #0F1A12;
+  --borda: #2A3830;
+  --texto: #E8F5EE;
+  --texto-apagado: #6B8F78;
+  --texto-card: #C8E6D4;
+
+  --preto: #080C0A;
+  --cinza-escuro: #111714;
+  --cinza-medio: #1E2820;
+  --cinza-borda: #2A3830;
+  --texto-claro: #E8F5EE;
+  --branco: #ffffff;
+  --erro: #EF4444;
+  --alerta: #F59E0B;
+
+  --fonte-titulo: 'Inter', sans-serif;
+  --fonte-corpo: 'Inter', sans-serif;
+  --raio: 12px;
+  --raio-grande: 20px;
+  --sombra: 0 4px 24px rgba(0,0,0,0.4);
+  --sidebar-aberta: 190px;
+  --sidebar-fechada: 52px;
+
+  --topbar-bg: #111714;
+  --overlay: rgba(0,0,0,0.6);
+  --scrollbar-thumb: #2A3830;
+}
+
+/* ===== TEMA CLARO ===== */
+[data-tema="claro"] {
+  --verde: #16A34A;
+  --verde-escuro: #14532D;
+  --verde-vivo: #16A34A;
+  --verde-claro: #DCFCE7;
+  --verde-0F: #DCFCE7;
+
+  --fundo: #F0FAF4;
+  --sidebar: #ffffff;
+  --card: #ffffff;
+  --card-hover: #f5fdf8;
+  --input: #EAF5EE;
+  --input-2: #F0FAF4;
+  --borda: #D1EAD9;
+  --texto: #0F3D22;
+  --texto-apagado: #4A7A5A;
+  --texto-card: #1A4731;
+
+  --preto: #F0FAF4;
+  --cinza-escuro: #ffffff;
+  --cinza-medio: #EAF5EE;
+  --cinza-borda: #D1EAD9;
+  --texto-claro: #0F3D22;
+  --branco: #0F3D22;
+  --erro: #DC2626;
+  --alerta: #D97706;
+
+  --fonte-titulo: 'Inter', sans-serif;
+  --fonte-corpo: 'Inter', sans-serif;
+  --raio: 12px;
+  --raio-grande: 20px;
+  --sombra: 0 4px 24px rgba(0,0,0,0.1);
+  --sidebar-aberta: 190px;
+  --sidebar-fechada: 52px;
+
+  --topbar-bg: #ffffff;
+  --overlay: rgba(0,0,0,0.3);
+  --scrollbar-thumb: #D1EAD9;
+}
+
+html, body {
+  background-color: var(--fundo);
+  color: var(--texto);
+  font-family: var(--fonte-corpo);
+  font-size: 15px;
+  line-height: 1.6;
+  height: 100vh;
+  overflow: hidden;
+  -webkit-font-smoothing: antialiased;
+  max-width: 100vw;
+  transition: background-color 0.2s, color 0.2s;
+}
+
+#root {
+  height: 100vh;
+  overflow: hidden;
+}
+
+h1, h2, h3, h4 {
+  font-family: var(--fonte-titulo);
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+a { color: inherit; text-decoration: none; }
+
+button {
+  font-family: var(--fonte-corpo);
+  cursor: pointer;
+  border: none;
+  outline: none;
+}
+
+input, select, textarea {
+  font-family: var(--fonte-corpo);
+  outline: none;
+}
+
+/* Scrollbar personalizada */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: var(--cinza-escuro); }
+::-webkit-scrollbar-thumb { background: var(--cinza-borda); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--verde); }
+
+/* Animações globais */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slideIn {
+  from { opacity: 0; transform: translateX(-20px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+#portal-root {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 999;
+}
+
+#portal-root > * {
+  pointer-events: all;
+}
+
+/* Fundo escurecido dos modais */
+.modal-fundo {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.6);
+  z-index: 1000;
+}
+
+/* Janela centralizada de qualquer modal */
+.modal-janela {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 1001;
+  width: calc(100% - 32px);
+  background: #111714;
+  border: 1px solid #2A3830;
+  border-radius: 20px;
+  overflow: hidden;
+  box-shadow: 0 24px 64px rgba(0,0,0,0.6);
+}
+
+.fade-in { animation: fadeIn 0.4s ease forwards; }
+
+/* =====================
+   LAYOUT RESPONSIVO
+   ===================== */
+
+/* Área de conteúdo principal */
+.conteudo-principal {
+  flex: 1;
+  min-height: 100vh;
+  transition: margin-left 0.25s ease;
+  overflow-x: hidden;
+}
+
+.conteudo-inner {
+  padding: 32px;
+  width: 100%;
+  max-width: 100%;
+}
+
+/* Monitores grandes (1400px+): mais espaço, conteúdo mais largo */
+@media (min-width: 1400px) {
+  .conteudo-inner {
+    padding: 40px 48px;
+  }
+}
+
+/* Monitores médios (900px - 1400px): padrão */
+@media (min-width: 900px) and (max-width: 1399px) {
+  .conteudo-inner {
+    padding: 32px;
+  }
+}
+
+/* Telas menores (abaixo de 900px): compacto */
+@media (max-width: 899px) {
+  .conteudo-inner {
+    padding: 16px;
+  }
+}
+
+/* Agenda: altura fixa por tamanho de tela */
+.grade-agenda {
+  height: 480px;
+}
+
+@media (min-width: 900px) and (max-width: 1199px) {
+  .grade-agenda {
+    height: 560px;
+  }
+}
+
+@media (min-width: 1200px) {
+  .grade-agenda {
+    height: 680px;
+  }
+}
+
+/* Evitar rolagem lateral na agenda */
+.zempofy-agenda {
+  width: 100%;
+  overflow-x: hidden;
+}
+
+.zempofy-agenda * {
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+/* Cards do dashboard: adapta colunas */
+.cards-dashboard {
+  display: grid;
+  gap: 16px;
+  margin-bottom: 32px;
+}
+
+@media (min-width: 1400px) {
+  .cards-dashboard {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
+@media (min-width: 900px) and (max-width: 1399px) {
+  .cards-dashboard {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
+@media (max-width: 899px) {
+  .cards-dashboard {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
