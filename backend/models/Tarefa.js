@@ -12,6 +12,7 @@ const tarefaSchema = new mongoose.Schema({
   concluidaEm: { type: Date },
   concluidaPor: { type: mongoose.Schema.Types.ObjectId, ref: 'Usuario' },
   tarefaMae: { type: mongoose.Schema.Types.ObjectId, ref: 'Tarefa', default: null },
+  setor: { type: mongoose.Schema.Types.ObjectId, ref: 'Setor', default: null },
   responsavel: { type: mongoose.Schema.Types.ObjectId, ref: 'Usuario', required: true },
   criadaPor: { type: mongoose.Schema.Types.ObjectId, ref: 'Usuario', required: true },
   empresa: { type: mongoose.Schema.Types.ObjectId, ref: 'Empresa', required: true },

@@ -364,6 +364,96 @@ const IconeRecolher = ({ aberta }) => (
   </svg>
 )
 
+// ── Navegação com suporte a grupos e submenus ──
+function NavItens({ menuItens, paginaAtual, setPagina, sidebarAberta }) {
+  const [gruposAbertos, setGruposAbertos] = useState(() => {
+    // Abre o grupo cujo subitem está ativo
+    const inicial = {}
+    menuItens.forEach(item => {
+      if (item.subItens?.some(s => s.id === paginaAtual)) {
+        inicial[item.id] = true
+      }
+    })
+    return inicial
+  })
+
+  const toggleGrupo = (id) => {
+    setGruposAbertos(prev => ({ ...prev, [id]: !prev[id] }))
+  }
+
+  return (
+    <>
+      {menuItens.map(item => {
+        if (item.subItens) {
+          const aberto = gruposAbertos[item.id]
+          const subAtivo = item.subItens.some(s => s.id === paginaAtual)
+          return (
+            <div key={item.id}>
+              {/* Botão do grupo */}
+              <button
+                style={{
+                  ...styles.navBtn,
+                  ...(subAtivo && !aberto ? styles.navBtnAtivo : {}),
+                  justifyContent: sidebarAberta ? 'space-between' : 'center',
+                }}
+                onClick={() => sidebarAberta ? toggleGrupo(item.id) : toggleGrupo(item.id)}
+                title={!sidebarAberta ? item.label : ''}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <span style={styles.navIcone}>{item.icone}</span>
+                  {sidebarAberta && <span style={styles.navLabel}>{item.label}</span>}
+                </div>
+                {sidebarAberta && (
+                  <span style={{ fontSize: '10px', color: 'var(--texto-apagado)', transition: 'transform 0.2s', transform: aberto ? 'rotate(90deg)' : 'rotate(0deg)' }}>
+                    ▶
+                  </span>
+                )}
+              </button>
+
+              {/* Submenus */}
+              {aberto && sidebarAberta && (
+                <div style={{ marginLeft: '12px', borderLeft: '1px solid #2A3830', paddingLeft: '8px', marginTop: '2px', marginBottom: '2px' }}>
+                  {item.subItens.map(sub => (
+                    <button
+                      key={sub.id}
+                      style={{
+                        ...styles.navBtn,
+                        ...(paginaAtual === sub.id ? styles.navBtnAtivo : {}),
+                        fontSize: '0.82rem',
+                        padding: '8px 12px',
+                      }}
+                      onClick={() => setPagina(sub.id)}
+                    >
+                      <span style={styles.navLabel}>{sub.label}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          )
+        }
+
+        // Item normal sem submenus
+        return (
+          <button
+            key={item.id}
+            style={{
+              ...styles.navBtn,
+              ...(paginaAtual === item.id ? styles.navBtnAtivo : {}),
+              justifyContent: sidebarAberta ? 'flex-start' : 'center',
+            }}
+            onClick={() => setPagina(item.id)}
+            title={!sidebarAberta ? item.label : ''}
+          >
+            <span style={styles.navIcone}>{item.icone}</span>
+            {sidebarAberta && <span style={styles.navLabel}>{item.label}</span>}
+          </button>
+        )
+      })}
+    </>
+  )
+}
+
 export default function Layout({ children, menuItens, paginaAtual, setPagina }) {
   const { usuario, sair, recarregarUsuario } = useAuth()
   const [sidebarAberta, setSidebarAberta] = useState(true)
@@ -442,21 +532,12 @@ export default function Layout({ children, menuItens, paginaAtual, setPagina }) 
         </div>
 
         <nav style={styles.nav}>
-          {menuItens.map(item => (
-            <button
-              key={item.id}
-              style={{
-                ...styles.navBtn,
-                ...(paginaAtual === item.id ? styles.navBtnAtivo : {}),
-                justifyContent: sidebarAberta ? 'flex-start' : 'center',
-              }}
-              onClick={() => setPagina(item.id)}
-              title={!sidebarAberta ? item.label : ''}
-            >
-              <span style={styles.navIcone}>{item.icone}</span>
-              {sidebarAberta && <span style={styles.navLabel}>{item.label}</span>}
-            </button>
-          ))}
+          <NavItens
+            menuItens={menuItens}
+            paginaAtual={paginaAtual}
+            setPagina={setPagina}
+            sidebarAberta={sidebarAberta}
+          />
         </nav>
       </aside>
 
@@ -506,8 +587,10 @@ const styles = {
     position: 'fixed',
     top: 0, left: 0, right: 0,
     height: '52px',
-    background: 'var(--sidebar)',
-    borderBottom: '1px solid #2A3830',
+    background: 'var(--topbar-bg)',
+    borderBottom: '1px solid var(--borda)',
+    backdropFilter: 'blur(12px)',
+    WebkitBackdropFilter: 'blur(12px)',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'space-between',
@@ -522,13 +605,15 @@ const styles = {
   },
   logoIcone: {
     width: '28px', height: '28px', minWidth: '28px',
-    background: 'linear-gradient(135deg, #22C55E, #1A6B3C)',
+    background: 'var(--gradiente-verde)',
     borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center',
     fontFamily: 'Inter, sans-serif', fontWeight: '800', fontSize: '14px', color: '#fff',
+    boxShadow: '0 2px 8px rgba(0,177,65,0.35)',
   },
   logoNome: {
     fontFamily: 'Inter, sans-serif', fontWeight: '700',
     fontSize: '16px', color: 'var(--texto)', whiteSpace: 'nowrap',
+    letterSpacing: '-0.02em',
   },
   topbarDireita: {
     display: 'flex', alignItems: 'center', gap: '4px',
@@ -536,23 +621,24 @@ const styles = {
   },
   btnTopbar: {
     background: 'none', border: 'none', borderRadius: '8px',
-    color: 'var(--texto)', width: '36px', height: '36px',
+    color: 'var(--texto-apagado)', width: '36px', height: '36px',
     display: 'flex', alignItems: 'center', justifyContent: 'center',
     cursor: 'pointer', transition: 'all 0.15s',
   },
   btnTopbarAtivo: {
-    background: 'rgba(34,197,94,0.1)',
+    background: 'var(--verde-glow)',
     color: 'var(--verde)',
   },
   chatBadge: {
-    position: 'absolute', top: '2px', right: '2px',
-    background: 'var(--verde)', color: '#fff',
-    fontSize: '0.55rem', fontWeight: '700',
-    borderRadius: '50%', width: '14px', height: '14px',
+    position: 'absolute', top: '4px', right: '4px',
+    background: 'var(--gradiente-verde)', color: '#fff',
+    fontSize: '0.5rem', fontWeight: '700',
+    borderRadius: '50%', width: '13px', height: '13px',
     display: 'flex', alignItems: 'center', justifyContent: 'center',
+    boxShadow: '0 0 6px rgba(0,177,65,0.5)',
   },
   topbarDivisor: {
-    width: '1px', height: '24px', background: 'var(--borda)', margin: '0 8px',
+    width: '1px', height: '20px', background: 'var(--borda)', margin: '0 8px',
   },
   avatarBtn: {
     display: 'flex', alignItems: 'center', gap: '8px',
@@ -560,20 +646,14 @@ const styles = {
     padding: '4px 8px', borderRadius: '8px',
     transition: 'background 0.15s',
   },
-  avatar: {
-    width: '30px', height: '30px', minWidth: '30px',
-    background: 'linear-gradient(135deg, #22C55E, #1A6B3C)',
-    borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center',
-    fontFamily: 'Inter, sans-serif', fontWeight: '700', fontSize: '13px', color: '#fff',
-  },
   avatarInfo: { display: 'flex', flexDirection: 'column', textAlign: 'left' },
-  avatarNome: { fontSize: '0.8rem', fontWeight: '600', color: 'var(--texto)', whiteSpace: 'nowrap' },
+  avatarNome: { fontSize: '0.8rem', fontWeight: '600', color: 'var(--texto)', whiteSpace: 'nowrap', letterSpacing: '-0.01em' },
   avatarCargo: { fontSize: '0.65rem', color: 'var(--texto-apagado)' },
 
   // Sidebar
   sidebar: {
     background: 'var(--sidebar)',
-    borderRight: '1px solid #2A3830',
+    borderRight: '1px solid var(--borda)',
     display: 'flex',
     flexDirection: 'column',
     transition: 'width 0.25s ease',
@@ -586,33 +666,35 @@ const styles = {
     display: 'flex',
     alignItems: 'center',
     padding: '10px 8px',
-    borderBottom: '1px solid #2A3830',
+    borderBottom: '1px solid var(--borda)',
     flexShrink: 0,
   },
   btnToggle: {
-    background: 'none', border: '1px solid #2A3830', borderRadius: '6px',
+    background: 'none', border: '1px solid var(--borda)', borderRadius: '6px',
     color: 'var(--texto-apagado)', width: '26px', height: '26px', display: 'flex',
     alignItems: 'center', justifyContent: 'center', cursor: 'pointer', flexShrink: 0,
+    transition: 'all 0.15s',
   },
   nav: {
-    flex: 1, padding: '12px 8px',
-    display: 'flex', flexDirection: 'column', gap: '4px',
+    flex: 1, padding: '10px 8px',
+    display: 'flex', flexDirection: 'column', gap: '2px',
     overflowY: 'auto',
   },
   navBtn: {
     display: 'flex', alignItems: 'center', gap: '10px',
-    padding: '10px 12px', borderRadius: '10px',
-    background: 'none', border: 'none', color: 'var(--texto)',
+    padding: '8px 10px', borderRadius: '8px',
+    background: 'none', border: 'none', color: 'var(--texto-apagado)',
     cursor: 'pointer', fontSize: '0.875rem', fontFamily: 'Inter, sans-serif',
     transition: 'all 0.15s', width: '100%', whiteSpace: 'nowrap',
+    fontWeight: '500',
   },
   navBtnAtivo: {
-    background: 'rgba(34,197,94,0.1)',
+    background: 'var(--verde-glow)',
     color: 'var(--verde)',
-    borderLeft: '2px solid #22C55E',
+    fontWeight: '600',
   },
   navIcone: { fontSize: '16px', flexShrink: 0, width: '20px', textAlign: 'center' },
-  navLabel: { fontSize: '0.875rem', fontWeight: '500' },
+  navLabel: { fontSize: '0.875rem', fontWeight: 'inherit' },
 
   // Conteúdo
   conteudo: {
@@ -633,31 +715,32 @@ const styles = {
   // Painel de perfil
   overlay: {
     position: 'fixed', inset: 0,
-    background: 'rgba(0,0,0,0.4)',
+    background: 'var(--overlay)',
     zIndex: 98,
+    backdropFilter: 'blur(2px)',
   },
   painel: {
     position: 'fixed',
     top: '52px', left: 0, bottom: 0,
     width: '260px',
-    background: 'var(--input-2)',
-    borderRight: '1px solid #2A3830',
+    background: 'var(--card)',
+    borderRight: '1px solid var(--borda)',
     zIndex: 99,
     display: 'flex',
     flexDirection: 'column',
-    boxShadow: '4px 0 24px rgba(0,0,0,0.5)',
+    boxShadow: 'var(--sombra-elevada)',
   },
   painelTopo: {
     display: 'flex', alignItems: 'center', justifyContent: 'space-between',
     padding: '20px 20px 16px',
-    borderBottom: '1px solid #2A3830',
+    borderBottom: '1px solid var(--borda)',
   },
   painelTitulo: {
     fontFamily: 'Inter, sans-serif', fontWeight: '700',
-    fontSize: '1rem', color: 'var(--texto)',
+    fontSize: '1rem', color: 'var(--texto)', letterSpacing: '-0.02em',
   },
   btnFechar: {
-    background: 'none', border: '1px solid #2A3830', borderRadius: '6px',
+    background: 'none', border: '1px solid var(--borda)', borderRadius: '6px',
     color: 'var(--texto-apagado)', width: '28px', height: '28px',
     display: 'flex', alignItems: 'center', justifyContent: 'center',
     fontSize: '12px', cursor: 'pointer',
@@ -669,12 +752,12 @@ const styles = {
   btnEditarFoto: {
     position: 'absolute', bottom: 0, right: 0,
     width: '18px', height: '18px',
-    background: 'var(--verde)', border: '2px solid #0F1A12',
+    background: 'var(--gradiente-verde)', border: '2px solid var(--card)',
     borderRadius: '50%', cursor: 'pointer',
     display: 'flex', alignItems: 'center', justifyContent: 'center',
     color: '#fff', padding: 0,
   },
-  painelNome: { fontSize: '0.95rem', fontWeight: '600', color: 'var(--texto)', marginBottom: '2px' },
+  painelNome: { fontSize: '0.95rem', fontWeight: '600', color: 'var(--texto)', marginBottom: '2px', letterSpacing: '-0.01em' },
   painelEmpresa: { fontSize: '0.8rem', color: 'var(--verde)', marginBottom: '4px' },
   painelId: { fontSize: '0.7rem', color: 'var(--texto-apagado)', fontFamily: 'monospace', letterSpacing: '1px' },
   painelDivisor: { height: '1px', background: 'var(--borda)', margin: '4px 20px' },
@@ -693,7 +776,7 @@ const styles = {
   painelSair: {
     display: 'flex', alignItems: 'center', gap: '10px',
     padding: '16px 20px', background: 'none', border: 'none',
-    color: '#FCA5A5', fontSize: '0.875rem', cursor: 'pointer',
+    color: '#f87171', fontSize: '0.875rem', cursor: 'pointer',
     width: '100%', textAlign: 'left', fontFamily: 'Inter, sans-serif',
   },
 }
