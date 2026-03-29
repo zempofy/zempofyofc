@@ -348,11 +348,12 @@ function PainelPerfil({ usuario, sair, fechar, setPagina, setModalAcessoExterno,
 }
 
 // Ícones SVG
-const IconeAgenda = () => (
+const IconeFeed = () => (
   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
+    <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/>
   </svg>
 )
+const IconeAgenda = IconeFeed
 const IconeChat = () => (
   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
     <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
@@ -501,12 +502,14 @@ export default function Layout({ children, menuItens, paginaAtual, setPagina }) 
 
         {/* Direita: ações rápidas + avatar */}
         <div style={styles.topbarDireita}>
+          {/* Feed */}
           <button
-            style={{ ...styles.btnTopbar, ...(paginaAtual === 'agenda' ? styles.btnTopbarAtivo : {}) }}
-            onClick={() => setPagina('agenda')}
-            title="Agenda"
+            style={{ ...styles.btnTopbar, position: 'relative' }}
+            onClick={() => setPagina('mural')}
+            title="Feed de atividades"
           >
             <IconeAgenda />
+            <span style={{ ...styles.chatBadge, background: '#f87171', boxShadow: '0 0 6px rgba(248,113,113,0.5)', display: 'none' }} id="feed-badge">!</span>
           </button>
           <button
             style={{ ...styles.btnTopbar, ...(paginaAtual === 'chat' ? styles.btnTopbarAtivo : {}), position: 'relative' }}

@@ -16,6 +16,7 @@ import Implantacao from '../components/Implantacao'
 import ModelosOnboarding from '../components/ModelosOnboarding'
 import Setores from '../components/Setores'
 import Checklist from '../components/Checklist'
+import Clientes from '../components/Clientes'
 
 // ============ PÁGINAS INTERNAS ============
 
@@ -845,6 +846,7 @@ export default function DashboardAdmin() {
         { id: 'checklist', label: 'Checklist' },
       ]
     },
+    { id: 'clientes', label: 'Clientes', icone: <Icone.Users size={16} /> },
     { id: 'tarefas', label: 'Tarefas', icone: <Icone.ClipboardList size={16} /> },
     { id: 'anotacoes', label: 'Anotações', icone: <Icone.Edit size={16} /> },
     { id: 'mural', label: 'Mural', icone: <Icone.Bell size={16} /> },
@@ -858,6 +860,7 @@ export default function DashboardAdmin() {
     if (pagina === 'tarefas') return <PaginaTarefas tarefas={tarefas} funcionarios={funcionarios} recarregar={carregarDados} />
     if (pagina === 'historico') return <PaginaHistorico />
     if (pagina === 'agenda') return <Agenda cargo="admin" usuarios={funcionarios} usuarioAtualId={usuario?.id} />
+    if (pagina === 'clientes') return <Clientes />
     if (pagina === 'chat') return <Chat setPagina={setPagina} />
     if (pagina === 'anotacoes') return <Anotacoes />
     if (pagina === 'relatorios') return <Relatorios />
