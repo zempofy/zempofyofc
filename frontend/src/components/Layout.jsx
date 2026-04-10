@@ -406,7 +406,7 @@ function NavItens({ menuItens, paginaAtual, setPagina, sidebarAberta }) {
                   {sidebarAberta && <span style={styles.navLabel}>{item.label}</span>}
                 </div>
                 {sidebarAberta && (
-                  <span style={{ fontSize: '10px', color: 'var(--texto-apagado)', transition: 'transform 0.2s', transform: aberto ? 'rotate(90deg)' : 'rotate(0deg)' }}>
+                  <span style={{ fontSize: '10px', color: '#71717a', transition: 'transform 0.2s', transform: aberto ? 'rotate(90deg)' : 'rotate(0deg)' }}>
                     ▶
                   </span>
                 )}
@@ -602,8 +602,8 @@ const styles = {
     position: 'fixed',
     top: 0, left: 0, right: 0,
     height: '52px',
-    background: 'var(--sidebar)',
-    borderBottom: '1px solid #2A3830',
+    background: '#18181b',
+    borderBottom: '1px solid #27272a',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'space-between',
@@ -664,8 +664,8 @@ const styles = {
 
   // Sidebar
   sidebar: {
-    background: 'var(--sidebar)',
-    borderRight: '1px solid var(--borda)',
+    background: '#18181b',
+    borderRight: '1px solid #27272a',
     display: 'flex',
     flexDirection: 'column',
     transition: 'width 0.25s ease',
@@ -678,12 +678,12 @@ const styles = {
     display: 'flex',
     alignItems: 'center',
     padding: '10px 8px',
-    borderBottom: '1px solid var(--borda)',
+    borderBottom: '1px solid #27272a',
     flexShrink: 0,
   },
   btnToggle: {
-    background: 'none', border: '1px solid var(--borda)', borderRadius: '6px',
-    color: 'var(--texto-apagado)', width: '26px', height: '26px', display: 'flex',
+    background: 'none', border: '1px solid #27272a', borderRadius: '6px',
+    color: '#71717a', width: '26px', height: '26px', display: 'flex',
     alignItems: 'center', justifyContent: 'center', cursor: 'pointer', flexShrink: 0,
     transition: 'all 0.15s',
   },
@@ -695,14 +695,14 @@ const styles = {
   navBtn: {
     display: 'flex', alignItems: 'center', gap: '10px',
     padding: '8px 10px', borderRadius: '8px',
-    background: 'none', border: 'none', color: 'var(--texto)',
+    background: 'none', border: 'none', color: '#ffffff',
     cursor: 'pointer', fontSize: '0.875rem', fontFamily: 'Inter, sans-serif',
     transition: 'all 0.15s', width: '100%', whiteSpace: 'nowrap',
     fontWeight: '500',
   },
   navBtnAtivo: {
-    background: 'var(--verde-glow)',
-    color: 'var(--verde)',
+    background: 'rgba(0,177,65,0.12)',
+    color: '#00b141',
     fontWeight: '600',
   },
   navIcone: { fontSize: '16px', flexShrink: 0, width: '20px', textAlign: 'center' },

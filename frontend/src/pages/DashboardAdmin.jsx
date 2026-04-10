@@ -536,10 +536,26 @@ function PaginaTarefas({ tarefas, funcionarios, recarregar }) {
   const [filtroResponsavel, setFiltroResponsavel] = useState('')
   const [gerenciarEtiquetas, setGerenciarEtiquetas] = useState(false)
   const [novaEtiqueta, setNovaEtiqueta] = useState('')
+  const [idsOnboarding, setIdsOnboarding] = useState(new Set())
   const [etiquetasCustom, setEtiquetasCustom] = useState(() => {
     try { return JSON.parse(localStorage.getItem('zmp_etiquetas') || 'null') || ETIQUETAS_OPCOES } catch { return ETIQUETAS_OPCOES }
   })
   const { mostrar } = useToast()
+
+  // Busca implantações para saber quais tarefas são de onboarding
+  useEffect(() => {
+    api.get('/implantacoes').then(res => {
+      const ids = new Set()
+      res.data.forEach(imp => {
+        imp.etapas?.forEach(etapa => {
+          etapa.tarefas?.forEach(t => {
+            if (t.tarefa) ids.add(typeof t.tarefa === 'object' ? t.tarefa._id : t.tarefa)
+          })
+        })
+      })
+      setIdsOnboarding(ids)
+    }).catch(() => {})
+  }, [tarefas])
 
   const salvarEtiquetasCustom = (lista) => {
     setEtiquetasCustom(lista)
@@ -565,7 +581,7 @@ function PaginaTarefas({ tarefas, funcionarios, recarregar }) {
     e.preventDefault()
     try {
       await api.post('/tarefas', form)
-      setForm({ descricao: '', data: '', hora: '', local: '', responsavelId: '' })
+      setForm({ descricao: '', data: '', hora: '', local: '', responsavelId: '', prioridade: '' })
       setMostrarForm(false)
       recarregar()
       mostrar('Tarefa criada com sucesso!')
@@ -589,8 +605,16 @@ function PaginaTarefas({ tarefas, funcionarios, recarregar }) {
     return matchBusca && matchStatus && matchResp
   })
 
-  const pendentes = tarefasFiltradas.filter(t => t.status === 'pendente')
-  const concluidas = tarefasFiltradas.filter(t => t.status === 'concluida')
+  // Separar tarefas normais das de onboarding
+  const tarefasNormais = tarefasFiltradas.filter(t => !idsOnboarding.has(t._id))
+  const tarefasOnboarding = tarefasFiltradas.filter(t => idsOnboarding.has(t._id))
+
+  const normaisPendentes = tarefasNormais.filter(t => t.status === 'pendente')
+  const normaisConcluidas = tarefasNormais.filter(t => t.status === 'concluida')
+  const onbPendentes = tarefasOnboarding.filter(t => t.status === 'pendente')
+  const onbConcluidas = tarefasOnboarding.filter(t => t.status === 'concluida')
+  const totalPendentes = tarefasFiltradas.filter(t => t.status === 'pendente').length
+  const totalConcluidas = tarefasFiltradas.filter(t => t.status === 'concluida').length
   const temFiltro = busca || filtroStatus !== 'todas' || filtroResponsavel
 
   return (
@@ -600,7 +624,7 @@ function PaginaTarefas({ tarefas, funcionarios, recarregar }) {
         <div>
           <h1 style={styles.titulo}>Tarefas</h1>
           <p style={styles.subtitulo}>
-            {pendentes.length} pendente(s) · {concluidas.length} concluída(s)
+            {totalPendentes} pendente(s) · {totalConcluidas} concluída(s)
             {temFiltro && <span style={{ color: 'var(--verde)', marginLeft: '8px' }}>· {tarefasFiltradas.length} resultado(s)</span>}
           </p>
         </div>
@@ -707,34 +731,74 @@ function PaginaTarefas({ tarefas, funcionarios, recarregar }) {
         </div>
       )}
 
-      {/* Lista de tarefas */}
+      {/* Lista de tarefas — sem resultados com filtro */}
       {tarefasFiltradas.length === 0 && temFiltro ? (
         <div style={{ textAlign: 'center', padding: '40px', color: 'var(--texto-apagado)' }}>
           <p>Nenhuma tarefa encontrada com esses filtros.</p>
         </div>
       ) : (
         <>
+          {/* ── TAREFAS DE ONBOARDING ── */}
           <div style={styles.secao}>
-            <h2 style={styles.secaoTitulo}>Pendentes</h2>
-            {pendentes.length === 0
-              ? <p style={{ color: 'var(--texto-apagado)' }}>Nenhuma tarefa pendente.</p>
-              : pendentes.map(t => (
-                <CardTarefa key={t._id} t={t} etiquetasOpcoes={etiquetasCustom}
-                  onConcluir={concluir} onDesmarcar={desmarcar} onEditar={editar}
-                  onExcluir={excluir} onEtiquetas={atualizarEtiquetas} />
-              ))
-            }
-          </div>
-          {concluidas.length > 0 && (
-            <div style={styles.secao}>
-              <h2 style={styles.secaoTitulo}>Concluídas</h2>
-              {concluidas.map(t => (
-                <CardTarefa key={t._id} t={t} etiquetasOpcoes={etiquetasCustom}
-                  onConcluir={concluir} onDesmarcar={desmarcar} onEditar={editar}
-                  onExcluir={excluir} onEtiquetas={atualizarEtiquetas} concluida />
-              ))}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '12px', paddingBottom: '8px', borderBottom: '1px solid var(--borda)' }}>
+              <h2 style={{ ...styles.secaoTitulo, margin: 0, border: 'none', padding: 0 }}>Onboarding de clientes</h2>
+              <span style={{ fontSize: '0.72rem', color: 'var(--verde)', background: 'var(--verde-glow)', borderRadius: '20px', padding: '2px 8px', border: '1px solid rgba(0,177,65,0.2)' }}>
+                {onbPendentes.length} pendente(s)
+              </span>
             </div>
-          )}
+            {onbPendentes.length === 0 && onbConcluidas.length === 0 ? (
+              <p style={{ color: 'var(--texto-apagado)', fontSize: '0.875rem' }}>Nenhuma tarefa de onboarding em andamento.</p>
+            ) : (
+              <>
+                {onbPendentes.map(t => (
+                  <CardTarefa key={t._id} t={t} etiquetasOpcoes={etiquetasCustom}
+                    onConcluir={concluir} onDesmarcar={desmarcar} onEditar={editar}
+                    onExcluir={excluir} onEtiquetas={atualizarEtiquetas} />
+                ))}
+                {onbConcluidas.length > 0 && (
+                  <div style={{ marginTop: '16px' }}>
+                    <p style={{ fontSize: '0.72rem', fontWeight: '700', color: 'var(--texto-apagado)', textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: '8px' }}>Concluídas</p>
+                    {onbConcluidas.map(t => (
+                      <CardTarefa key={t._id} t={t} etiquetasOpcoes={etiquetasCustom}
+                        onConcluir={concluir} onDesmarcar={desmarcar} onEditar={editar}
+                        onExcluir={excluir} onEtiquetas={atualizarEtiquetas} concluida />
+                    ))}
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+
+          {/* ── TAREFAS DA EQUIPE ── */}
+          <div style={styles.secao}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '12px', paddingBottom: '8px', borderBottom: '1px solid var(--borda)' }}>
+              <h2 style={{ ...styles.secaoTitulo, margin: 0, border: 'none', padding: 0 }}>Tarefas da equipe</h2>
+              <span style={{ fontSize: '0.72rem', color: 'var(--texto-apagado)', background: 'var(--input)', borderRadius: '20px', padding: '2px 8px', border: '1px solid var(--borda)' }}>
+                {normaisPendentes.length} pendente(s)
+              </span>
+            </div>
+            {normaisPendentes.length === 0 && normaisConcluidas.length === 0 ? (
+              <p style={{ color: 'var(--texto-apagado)', fontSize: '0.875rem' }}>Nenhuma tarefa criada ainda. Use o botão "+ Nova tarefa" para começar.</p>
+            ) : (
+              <>
+                {normaisPendentes.map(t => (
+                  <CardTarefa key={t._id} t={t} etiquetasOpcoes={etiquetasCustom}
+                    onConcluir={concluir} onDesmarcar={desmarcar} onEditar={editar}
+                    onExcluir={excluir} onEtiquetas={atualizarEtiquetas} />
+                ))}
+                {normaisConcluidas.length > 0 && (
+                  <div style={{ marginTop: '16px' }}>
+                    <p style={{ fontSize: '0.72rem', fontWeight: '700', color: 'var(--texto-apagado)', textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: '8px' }}>Concluídas</p>
+                    {normaisConcluidas.map(t => (
+                      <CardTarefa key={t._id} t={t} etiquetasOpcoes={etiquetasCustom}
+                        onConcluir={concluir} onDesmarcar={desmarcar} onEditar={editar}
+                        onExcluir={excluir} onEtiquetas={atualizarEtiquetas} concluida />
+                    ))}
+                  </div>
+                )}
+              </>
+            )}
+          </div>
         </>
       )}
     </div>

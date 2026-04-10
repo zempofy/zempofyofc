@@ -10,62 +10,179 @@ import Mural from '../components/Mural'
 import Relatorios from '../components/Relatorios'
 
 function PaginaMinhasTarefas({ tarefas, recarregar }) {
-  const pendentes = tarefas.filter(t => t.status === 'pendente')
-  const concluidas = tarefas.filter(t => t.status === 'concluida')
+  const { usuario } = useAuth()
+  const [mostrarForm, setMostrarForm] = useState(false)
+  const [form, setForm] = useState({ descricao: '', data: '', hora: '', local: '' })
+  const [erro, setErro] = useState('')
+  const [salvando, setSalvando] = useState(false)
+  const [idsOnboarding, setIdsOnboarding] = useState(new Set())
+
+  // Busca implantações para identificar tarefas de onboarding
+  useEffect(() => {
+    api.get('/implantacoes').then(res => {
+      const ids = new Set()
+      res.data.forEach(imp => {
+        imp.etapas?.forEach(etapa => {
+          etapa.tarefas?.forEach(t => {
+            if (t.tarefa) ids.add(typeof t.tarefa === 'object' ? t.tarefa._id : t.tarefa)
+          })
+        })
+      })
+      setIdsOnboarding(ids)
+    }).catch(() => {})
+  }, [tarefas])
+
+  const tarefasNormais = tarefas.filter(t => !idsOnboarding.has(t._id))
+  const tarefasOnboarding = tarefas.filter(t => idsOnboarding.has(t._id))
+
+  const normaisPendentes = tarefasNormais.filter(t => t.status === 'pendente')
+  const normaisConcluidas = tarefasNormais.filter(t => t.status === 'concluida')
+  const onbPendentes = tarefasOnboarding.filter(t => t.status === 'pendente')
+  const onbConcluidas = tarefasOnboarding.filter(t => t.status === 'concluida')
+  const totalPendentes = tarefas.filter(t => t.status === 'pendente').length
+  const totalConcluidas = tarefas.filter(t => t.status === 'concluida').length
 
   const concluir = async (id) => {
     await api.patch(`/tarefas/${id}/concluir`)
     recarregar()
   }
 
+  const criar = async (e) => {
+    e.preventDefault()
+    if (!form.descricao.trim()) return setErro('Descrição é obrigatória.')
+    setSalvando(true); setErro('')
+    try {
+      await api.post('/tarefas', { ...form, responsavelId: usuario?._id || usuario?.id })
+      setForm({ descricao: '', data: '', hora: '', local: '' })
+      setMostrarForm(false)
+      recarregar()
+    } catch (err) {
+      setErro(err.response?.data?.erro || 'Erro ao criar tarefa.')
+    } finally {
+      setSalvando(false)
+    }
+  }
+
+  const CardSimples = ({ t, concluida = false }) => (
+    <div style={{ ...styles.cardTarefa, opacity: concluida ? 0.55 : 1 }}>
+      <div style={{ flex: 1 }}>
+        <p style={{ ...styles.tarefaDesc, textDecoration: concluida ? 'line-through' : 'none' }}>{t.descricao}</p>
+        <p style={styles.tarefaMeta}>
+          {t.local && t.local}
+          {t.data && ` · ${t.data.split('-').reverse().join('/')}`}
+          {t.hora && ` · ${t.hora}`}
+          {concluida && t.concluidaEm && ` · Concluída em ${new Date(t.concluidaEm).toLocaleDateString('pt-BR')}`}
+        </p>
+      </div>
+      {!concluida && (
+        <button style={styles.btnVerde} onClick={() => concluir(t._id)}>
+          <Icone.Check size={14} /> Concluir
+        </button>
+      )}
+    </div>
+  )
+
   return (
     <div>
       <div style={styles.cabecalho}>
         <div>
           <h1 style={styles.titulo}>Minhas Tarefas</h1>
-          <p style={styles.subtitulo}>{pendentes.length} pendente(s) · {concluidas.length} concluída(s)</p>
+          <p style={styles.subtitulo}>{totalPendentes} pendente(s) · {totalConcluidas} concluída(s)</p>
         </div>
+        <button
+          style={{ background: mostrarForm ? 'none' : 'var(--gradiente-verde)', color: mostrarForm ? 'var(--texto-apagado)' : '#fff', border: mostrarForm ? '1px solid var(--borda)' : 'none', borderRadius: '10px', padding: '10px 20px', fontFamily: 'Inter, sans-serif', fontWeight: '600', fontSize: '0.875rem', cursor: 'pointer', boxShadow: mostrarForm ? 'none' : '0 2px 8px rgba(0,177,65,0.3)' }}
+          onClick={() => { setMostrarForm(!mostrarForm); setErro('') }}
+        >
+          {mostrarForm ? '✕ Cancelar' : '+ Nova tarefa'}
+        </button>
       </div>
 
+      {/* Formulário nova tarefa */}
+      {mostrarForm && (
+        <div style={{ background: 'var(--card)', border: '1px solid var(--borda)', borderRadius: '14px', padding: '20px', marginBottom: '24px', boxShadow: 'var(--sombra-card)' }}>
+          <h3 style={{ color: 'var(--texto)', marginBottom: '16px', fontFamily: 'Inter, sans-serif', fontSize: '0.95rem' }}>Nova tarefa</h3>
+          {erro && <p style={{ color: '#f87171', fontSize: '0.8rem', marginBottom: '12px', background: 'rgba(248,113,113,0.08)', padding: '8px 12px', borderRadius: '8px', border: '1px solid rgba(248,113,113,0.2)' }}>{erro}</p>}
+          <form onSubmit={criar} style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '12px', alignItems: 'end' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', gridColumn: '1 / -1' }}>
+              <label style={{ fontSize: '0.68rem', fontWeight: '700', color: 'var(--texto-apagado)', textTransform: 'uppercase', letterSpacing: '0.8px' }}>Descrição</label>
+              <input style={{ background: 'var(--input)', border: '1px solid var(--borda)', borderRadius: '10px', padding: '10px 14px', color: 'var(--texto)', fontSize: '0.9rem', fontFamily: 'Inter, sans-serif', width: '100%', boxSizing: 'border-box' }}
+                placeholder="O que precisa ser feito?" value={form.descricao}
+                onChange={e => setForm({ ...form, descricao: e.target.value })} autoFocus required />
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+              <label style={{ fontSize: '0.68rem', fontWeight: '700', color: 'var(--texto-apagado)', textTransform: 'uppercase', letterSpacing: '0.8px' }}>Data</label>
+              <input style={{ background: 'var(--input)', border: '1px solid var(--borda)', borderRadius: '10px', padding: '10px 14px', color: 'var(--texto)', fontSize: '0.9rem', fontFamily: 'Inter, sans-serif', width: '100%', boxSizing: 'border-box' }}
+                type="date" value={form.data} onChange={e => setForm({ ...form, data: e.target.value })} />
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+              <label style={{ fontSize: '0.68rem', fontWeight: '700', color: 'var(--texto-apagado)', textTransform: 'uppercase', letterSpacing: '0.8px' }}>Hora</label>
+              <input style={{ background: 'var(--input)', border: '1px solid var(--borda)', borderRadius: '10px', padding: '10px 14px', color: 'var(--texto)', fontSize: '0.9rem', fontFamily: 'Inter, sans-serif', width: '100%', boxSizing: 'border-box' }}
+                type="time" value={form.hora} onChange={e => setForm({ ...form, hora: e.target.value })} />
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+              <label style={{ fontSize: '0.68rem', fontWeight: '700', color: 'var(--texto-apagado)', textTransform: 'uppercase', letterSpacing: '0.8px' }}>Local</label>
+              <input style={{ background: 'var(--input)', border: '1px solid var(--borda)', borderRadius: '10px', padding: '10px 14px', color: 'var(--texto)', fontSize: '0.9rem', fontFamily: 'Inter, sans-serif', width: '100%', boxSizing: 'border-box' }}
+                placeholder="Ex: Escritório..." value={form.local} onChange={e => setForm({ ...form, local: e.target.value })} />
+            </div>
+            <button type="submit" disabled={salvando}
+              style={{ background: 'var(--gradiente-verde)', color: '#fff', border: 'none', borderRadius: '10px', padding: '10px 20px', fontFamily: 'Inter, sans-serif', fontWeight: '600', fontSize: '0.875rem', cursor: 'pointer', boxShadow: '0 2px 8px rgba(0,177,65,0.3)', alignSelf: 'end' }}>
+              {salvando ? 'Salvando...' : 'Criar'}
+            </button>
+          </form>
+        </div>
+      )}
+
+      {/* ── TAREFAS DE ONBOARDING ── */}
       <div style={styles.secao}>
-        <h2 style={styles.secaoTitulo}>Pendentes</h2>
-        {pendentes.length === 0 ? (
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '12px', paddingBottom: '8px', borderBottom: '1px solid var(--borda)' }}>
+          <h2 style={{ ...styles.secaoTitulo, margin: 0, border: 'none', padding: 0 }}>Onboarding de clientes</h2>
+          <span style={{ fontSize: '0.72rem', color: 'var(--verde)', background: 'var(--verde-glow)', borderRadius: '20px', padding: '2px 8px', border: '1px solid rgba(0,177,65,0.2)' }}>
+            {onbPendentes.length} pendente(s)
+          </span>
+        </div>
+        {onbPendentes.length === 0 && onbConcluidas.length === 0 ? (
           <div style={styles.vazio}>
-            <Icone.CheckCircle size={32} style={{ color: 'var(--verde)', opacity: 0.5 }} />
-            <p>Sem tarefas pendentes! Você está em dia.</p>
+            <Icone.ClipboardList size={32} style={{ color: 'var(--borda)', opacity: 0.5 }} />
+            <p>Nenhuma tarefa de onboarding atribuída a você.</p>
           </div>
         ) : (
-          pendentes.map(t => (
-            <div key={t._id} style={styles.cardTarefa}>
-              <div style={{ flex: 1 }}>
-                <p style={styles.tarefaDesc}>{t.descricao}</p>
-                <p style={styles.tarefaMeta}>
-                  {t.local && t.local}
-                  {t.data && ` · ${t.data.split('-').reverse().join('/')}`}
-                  {t.hora && ` · ${t.hora}`}
-                </p>
+          <>
+            {onbPendentes.map(t => <CardSimples key={t._id} t={t} />)}
+            {onbConcluidas.length > 0 && (
+              <div style={{ marginTop: '12px' }}>
+                <p style={{ fontSize: '0.72rem', fontWeight: '700', color: 'var(--texto-apagado)', textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: '8px' }}>Concluídas</p>
+                {onbConcluidas.map(t => <CardSimples key={t._id} t={t} concluida />)}
               </div>
-              <button style={styles.btnVerde} onClick={() => concluir(t._id)}>
-                <Icone.Check size={14} /> Concluir
-              </button>
-            </div>
-          ))
+            )}
+          </>
         )}
       </div>
 
-      {concluidas.length > 0 && (
-        <div style={styles.secao}>
-          <h2 style={styles.secaoTitulo}>Concluídas</h2>
-          {concluidas.map(t => (
-            <div key={t._id} style={{ ...styles.cardTarefa, opacity: 0.5 }}>
-              <div style={{ flex: 1 }}>
-                <p style={{ ...styles.tarefaDesc, textDecoration: 'line-through' }}>{t.descricao}</p>
-                <p style={styles.tarefaMeta}>Concluída em {new Date(t.concluidaEm).toLocaleDateString('pt-BR')}</p>
-              </div>
-            </div>
-          ))}
+      {/* ── MINHAS TAREFAS (criadas por mim) ── */}
+      <div style={styles.secao}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '12px', paddingBottom: '8px', borderBottom: '1px solid var(--borda)' }}>
+          <h2 style={{ ...styles.secaoTitulo, margin: 0, border: 'none', padding: 0 }}>Minhas tarefas</h2>
+          <span style={{ fontSize: '0.72rem', color: 'var(--texto-apagado)', background: 'var(--input)', borderRadius: '20px', padding: '2px 8px', border: '1px solid var(--borda)' }}>
+            {normaisPendentes.length} pendente(s)
+          </span>
         </div>
-      )}
+        {normaisPendentes.length === 0 && normaisConcluidas.length === 0 ? (
+          <div style={styles.vazio}>
+            <Icone.CheckCircle size={32} style={{ color: 'var(--verde)', opacity: 0.4 }} />
+            <p>Nenhuma tarefa ainda. Use o botão "+ Nova tarefa" para criar.</p>
+          </div>
+        ) : (
+          <>
+            {normaisPendentes.map(t => <CardSimples key={t._id} t={t} />)}
+            {normaisConcluidas.length > 0 && (
+              <div style={{ marginTop: '12px' }}>
+                <p style={{ fontSize: '0.72rem', fontWeight: '700', color: 'var(--texto-apagado)', textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: '8px' }}>Concluídas</p>
+                {normaisConcluidas.map(t => <CardSimples key={t._id} t={t} concluida />)}
+              </div>
+            )}
+          </>
+        )}
+      </div>
     </div>
   )
 }
