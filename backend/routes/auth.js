@@ -118,7 +118,6 @@ router.get('/me', autenticar, (req, res) => {
     email: u.email,
     cargo: u.cargo,
     avatar: u.avatar || '',
-    permissoes: u.permissoes || [],
     empresa: { id: u.empresa._id, nome: u.empresa.nome }
   });
 });

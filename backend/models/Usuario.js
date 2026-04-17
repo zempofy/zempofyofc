@@ -9,7 +9,6 @@ const usuarioSchema = new mongoose.Schema({
   empresa: { type: mongoose.Schema.Types.ObjectId, ref: 'Empresa', required: true },
   avatar: { type: String, default: '' },
   ativo: { type: Boolean, default: true },
-  permissoes: { type: [String], default: [] },
   criadoEm: { type: Date, default: Date.now }
 });
 
