@@ -2,6 +2,9 @@ const express = require('express');
 const { autenticar } = require('../middleware/auth');
 const Implantacao = require('../models/Implantacao');
 const ModeloOnboarding = require('../models/ModeloOnboarding');
+const AtividadeChecklist = require('../models/AtividadeChecklist');
+const Tarefa = require('../models/Tarefa');
+const Setor = require('../models/Setor');
 
 const router = express.Router();
 
@@ -61,7 +64,7 @@ router.get('/:id', autenticar, async (req, res) => {
   }
 });
 
-// POST /api/implantacoes - Cria uma nova implantação a partir de um modelo
+// POST /api/implantacoes - Cria nova implantação e gera tarefas reais para cada colaborador
 router.post('/', autenticar, async (req, res) => {
   const { nomeCliente, cnpj, modeloId } = req.body;
   if (!nomeCliente?.trim()) return res.status(400).json({ erro: 'Nome do cliente é obrigatório.' });
@@ -75,17 +78,43 @@ router.post('/', autenticar, async (req, res) => {
       });
       if (!modelo) return res.status(404).json({ erro: 'Modelo não encontrado.' });
 
-      // Monta etapas a partir do modelo, ordenadas
-      etapas = modelo.setores
-        .sort((a, b) => a.ordem - b.ordem)
-        .map((s, idx) => ({
+      const setoresOrdenados = [...modelo.setores].sort((a, b) => a.ordem - b.ordem);
+
+      for (let idx = 0; idx < setoresOrdenados.length; idx++) {
+        const s = setoresOrdenados[idx];
+
+        // Busca o setor para pegar o primeiro membro
+        const setorCompleto = await Setor.findById(s.setor);
+        const responsavelId = setorCompleto?.membros?.[0] || req.usuario._id;
+
+        // Busca as atividades do checklist pelos IDs salvos no modelo
+        const atividades = await AtividadeChecklist.find({
+          _id: { $in: s.tarefas },
+          ativo: true
+        });
+
+        // Cria uma Tarefa real no banco para cada atividade
+        const tarefasCriadas = await Promise.all(
+          atividades.map(ativ =>
+            Tarefa.create({
+              descricao: ativ.descricao,
+              setor: s.setor,
+              responsavel: ativ.responsavel || responsavelId,
+              criadaPor: req.usuario._id,
+              empresa: req.usuario.empresa._id,
+              status: 'pendente',
+            })
+          )
+        );
+
+        etapas.push({
           setor: s.setor,
           ordem: s.ordem,
-          // Primeira etapa já começa em andamento, as demais ficam bloqueadas
           status: idx === 0 ? 'em_andamento' : 'bloqueada',
-          tarefas: s.tarefas.map(t => ({ tarefa: t, status: 'pendente' })),
+          tarefas: tarefasCriadas.map(t => ({ tarefa: t._id, status: 'pendente' })),
           iniciadaEm: idx === 0 ? new Date() : undefined
-        }));
+        });
+      }
     }
 
     const implantacao = await Implantacao.create({
@@ -100,6 +129,7 @@ router.post('/', autenticar, async (req, res) => {
     const populada = await populateImplantacao(Implantacao.findById(implantacao._id));
     res.status(201).json(populada);
   } catch (err) {
+    console.error(err);
     res.status(500).json({ erro: 'Erro ao criar implantação.' });
   }
 });
@@ -180,16 +210,31 @@ router.patch('/:id/tarefas/:etapaId/:tarefaId/desmarcar', autenticar, async (req
   }
 });
 
-// DELETE /api/implantacoes/:id
+// DELETE /api/implantacoes/:id — exclui a implantação e todas as tarefas geradas por ela
 router.delete('/:id', autenticar, async (req, res) => {
   try {
-    await Implantacao.findOneAndUpdate(
-      { _id: req.params.id, empresa: req.usuario.empresa._id },
-      { status: 'cancelada' }
-    );
-    res.json({ mensagem: 'Implantação cancelada.' });
+    const implantacao = await Implantacao.findOne({
+      _id: req.params.id,
+      empresa: req.usuario.empresa._id
+    });
+    if (!implantacao) return res.status(404).json({ erro: 'Implantação não encontrada.' });
+
+    // Coleta todos os IDs de tarefas geradas e exclui do banco
+    const tarefaIds = [];
+    implantacao.etapas.forEach(etapa => {
+      etapa.tarefas.forEach(t => {
+        if (t.tarefa) tarefaIds.push(t.tarefa);
+      });
+    });
+    if (tarefaIds.length > 0) {
+      await Tarefa.deleteMany({ _id: { $in: tarefaIds } });
+    }
+
+    await Implantacao.findByIdAndDelete(req.params.id);
+    res.json({ mensagem: 'Implantação excluída com sucesso.' });
   } catch (err) {
-    res.status(500).json({ erro: 'Erro ao cancelar implantação.' });
+    console.error(err);
+    res.status(500).json({ erro: 'Erro ao excluir implantação.' });
   }
 });
 

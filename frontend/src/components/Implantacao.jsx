@@ -300,6 +300,7 @@ export default function Implantacao() {
   const [busca, setBusca] = useState('')
   const [modalAberto, setModalAberto] = useState(false)
   const [detalheSelecionado, setDetalheSelecionado] = useState(null)
+  const [confirmandoExcluir, setConfirmandoExcluir] = useState(null)
   const { mostrar: toast } = useToast()
 
   const buscar = async () => {
@@ -312,6 +313,18 @@ export default function Implantacao() {
   }
 
   useEffect(() => { buscar() }, [])
+
+  const excluir = async () => {
+    if (!confirmandoExcluir) return
+    try {
+      await api.delete(`/implantacoes/${confirmandoExcluir._id}`)
+      toast('Onboarding excluído.', 'aviso')
+      setConfirmandoExcluir(null)
+      buscar()
+    } catch {
+      toast('Erro ao excluir onboarding.', 'erro')
+    }
+  }
 
   if (detalheSelecionado) {
     return (
@@ -340,6 +353,32 @@ export default function Implantacao() {
 
   return (
     <div>
+      {/* Modal confirmação de exclusão */}
+      {confirmandoExcluir && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', zIndex: 300, display: 'flex', alignItems: 'center', justifyContent: 'center', backdropFilter: 'blur(4px)' }}
+          onClick={() => setConfirmandoExcluir(null)}>
+          <div style={{ background: 'var(--card)', border: '1px solid var(--borda)', borderRadius: '18px', width: '100%', maxWidth: '400px', margin: '0 16px', boxShadow: '0 8px 32px rgba(0,0,0,0.5)' }}
+            onClick={e => e.stopPropagation()}>
+            <div style={{ padding: '24px 24px 16px' }}>
+              <p style={{ fontWeight: '700', fontSize: '1rem', color: 'var(--texto)', marginBottom: '10px', fontFamily: 'Inter, sans-serif' }}>Excluir onboarding</p>
+              <p style={{ fontSize: '0.875rem', color: 'var(--texto-apagado)', lineHeight: '1.6', margin: 0 }}>
+                Tem certeza que deseja excluir o onboarding de <strong style={{ color: 'var(--texto)' }}>{confirmandoExcluir.nomeCliente}</strong>? Todas as tarefas geradas também serão removidas. Essa ação não pode ser desfeita.
+              </p>
+            </div>
+            <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end', padding: '16px 24px', borderTop: '1px solid var(--borda)' }}>
+              <button style={{ background: 'none', border: '1px solid var(--borda)', borderRadius: '8px', color: 'var(--texto-apagado)', padding: '9px 18px', fontFamily: 'Inter, sans-serif', fontSize: '0.875rem', cursor: 'pointer' }}
+                onClick={() => setConfirmandoExcluir(null)}>
+                Cancelar
+              </button>
+              <button style={{ background: 'rgba(248,113,113,0.15)', border: '1px solid rgba(248,113,113,0.3)', borderRadius: '8px', color: '#f87171', padding: '9px 18px', fontFamily: 'Inter, sans-serif', fontWeight: '600', fontSize: '0.875rem', cursor: 'pointer' }}
+                onClick={excluir}>
+                Sim, excluir
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div style={s.header}>
         <h1 style={s.titulo}>Onboarding</h1>
         <button style={s.btnNovo} onClick={() => setModalAberto(true)}>+ Nova empresa</button>
@@ -367,26 +406,35 @@ export default function Implantacao() {
             const etapa = etapaAtual(imp)
             const pct = progresso(imp)
             return (
-              <div key={imp._id} style={s.card} onClick={() => setDetalheSelecionado(imp)}>
-                <div style={s.cardTopo}>
-                  <div style={s.avatar}>{iniciais(imp.nomeCliente)}</div>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <p style={s.cardNome}>{imp.nomeCliente}</p>
-                    {imp.cnpj && <p style={s.cardCnpj}>{imp.cnpj}</p>}
+              <div key={imp._id} style={{ position: 'relative' }}>
+                <button
+                  title="Excluir onboarding"
+                  style={{ position: 'absolute', top: '10px', right: '10px', zIndex: 2, background: 'rgba(248,113,113,0.08)', border: '1px solid rgba(248,113,113,0.2)', color: '#f87171', cursor: 'pointer', fontSize: '12px', padding: '3px 8px', borderRadius: '6px', lineHeight: 1, fontFamily: 'Inter, sans-serif', fontWeight: '600' }}
+                  onClick={e => { e.stopPropagation(); setConfirmandoExcluir({ _id: imp._id, nomeCliente: imp.nomeCliente }) }}
+                >
+                  Excluir
+                </button>
+                <div style={s.card} onClick={() => setDetalheSelecionado(imp)}>
+                  <div style={s.cardTopo}>
+                    <div style={s.avatar}>{iniciais(imp.nomeCliente)}</div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <p style={s.cardNome}>{imp.nomeCliente}</p>
+                      {imp.cnpj && <p style={s.cardCnpj}>{imp.cnpj}</p>}
+                    </div>
                   </div>
-                </div>
-                <hr style={s.divisor} />
-                <p style={s.labelMini}>Etapa atual</p>
-                {etapa ? (
-                  <span style={{ ...s.etapaBadge, background: `${etapa.setor?.cor || '#2DAA59'}22`, color: etapa.setor?.cor || '#2DAA59' }}>
-                    {etapa.setor?.nome || 'Em andamento'}
-                  </span>
-                ) : (
-                  <span style={{ ...s.etapaBadge, background: 'rgba(34,197,94,0.1)', color: '#2DAA59' }}>Concluído ✓</span>
-                )}
-                <p style={{ ...s.labelMini, marginTop: '10px' }}>Progresso</p>
-                <div style={s.baraBg}>
-                  <div style={{ ...s.baraFill, width: `${pct}%` }} />
+                  <hr style={s.divisor} />
+                  <p style={s.labelMini}>Etapa atual</p>
+                  {etapa ? (
+                    <span style={{ ...s.etapaBadge, background: `${etapa.setor?.cor || '#2DAA59'}22`, color: etapa.setor?.cor || '#2DAA59' }}>
+                      {etapa.setor?.nome || 'Em andamento'}
+                    </span>
+                  ) : (
+                    <span style={{ ...s.etapaBadge, background: 'rgba(34,197,94,0.1)', color: '#2DAA59' }}>Concluído ✓</span>
+                  )}
+                  <p style={{ ...s.labelMini, marginTop: '10px' }}>Progresso</p>
+                  <div style={s.baraBg}>
+                    <div style={{ ...s.baraFill, width: `${pct}%` }} />
+                  </div>
                 </div>
               </div>
             )
