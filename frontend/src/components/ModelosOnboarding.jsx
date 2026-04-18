@@ -61,7 +61,6 @@ function FormModelo({ modelo, fechar, onSalvo }) {
   const [setoresSelecionados, setSetoresSelecionados] = useState([])
   const [tarefasPorSetor, setTarefasPorSetor] = useState({}) // { setorId: [tarefa] }
   const [todasTarefas, setTodasTarefas] = useState([])
-  const [buscaTarefa, setBuscaTarefa] = useState({}) // { setorId: texto }
   const [carregando, setCarregando] = useState(false)
   const [erro, setErro] = useState('')
   const { mostrar: toast } = useToast()
@@ -192,60 +191,84 @@ function FormModelo({ modelo, fechar, onSalvo }) {
             </div>
           </div>
 
-          {/* Tarefas por setor */}
+          {/* Tarefas por setor — lista de checkboxes */}
           {setoresSelecionados.map(setor => {
             const tarefasDoSetor = todasTarefas.filter(t => t.setor?._id === setor._id || t.setor === setor._id)
             const selecionadas = tarefasPorSetor[setor._id] || []
-            const busca = buscaTarefa[setor._id] || ''
-            const filtradas = tarefasDoSetor.filter(t =>
-              t.descricao.toLowerCase().includes(busca.toLowerCase()) &&
-              !selecionadas.find(s => s._id === t._id)
-            )
+            const estaSelecionada = (t) => selecionadas.find(s => s._id === t._id)
+
+            const toggleTarefa = (t) => {
+              if (estaSelecionada(t)) {
+                removerTarefa(setor._id, t._id)
+              } else {
+                adicionarTarefa(setor._id, t)
+              }
+            }
 
             return (
               <div key={setor._id} style={s.setorBloco}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px' }}>
-                  <div style={{ width: '10px', height: '10px', borderRadius: '50%', background: setor.cor }} />
-                  <span style={{ fontSize: '0.85rem', fontWeight: '600', color: 'var(--texto)', fontFamily: 'Inter, sans-serif' }}>{setor.nome}</span>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <div style={{ width: '10px', height: '10px', borderRadius: '50%', background: setor.cor }} />
+                    <span style={{ fontSize: '0.85rem', fontWeight: '600', color: 'var(--texto)', fontFamily: 'Inter, sans-serif' }}>{setor.nome}</span>
+                  </div>
+                  <span style={{ fontSize: '0.72rem', color: 'var(--texto-apagado)' }}>
+                    {selecionadas.length} de {tarefasDoSetor.length} selecionada(s)
+                  </span>
                 </div>
 
-                {/* Tarefas selecionadas */}
-                {selecionadas.length > 0 && (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginBottom: '8px' }}>
-                    {selecionadas.map(t => (
-                      <div key={t._id} style={s.tarefaSelecionada}>
-                        <span style={{ fontSize: '0.82rem', color: 'var(--texto)', flex: 1 }}>{t.descricao}</span>
-                        <button onClick={() => removerTarefa(setor._id, t._id)} style={s.btnRemoverTarefa}>✕</button>
-                      </div>
-                    ))}
+                {tarefasDoSetor.length === 0 ? (
+                  <p style={{ fontSize: '0.8rem', color: 'var(--texto-apagado)', fontStyle: 'italic', margin: 0 }}>
+                    Nenhuma atividade cadastrada neste setor. Adicione pelo Checklist.
+                  </p>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                    {tarefasDoSetor.map(t => {
+                      const selecionada = !!estaSelecionada(t)
+                      return (
+                        <div
+                          key={t._id}
+                          onClick={() => toggleTarefa(t)}
+                          style={{
+                            display: 'flex', alignItems: 'center', gap: '10px',
+                            padding: '9px 12px', borderRadius: '8px', cursor: 'pointer',
+                            background: selecionada ? `${setor.cor}18` : 'transparent',
+                            border: selecionada ? `1px solid ${setor.cor}44` : '1px solid transparent',
+                            transition: 'all 0.15s',
+                          }}
+                        >
+                          {/* Checkbox visual */}
+                          <div style={{
+                            width: '16px', height: '16px', borderRadius: '4px', flexShrink: 0,
+                            border: selecionada ? `2px solid ${setor.cor}` : '2px solid #3f3f46',
+                            background: selecionada ? setor.cor : 'transparent',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            transition: 'all 0.15s',
+                          }}>
+                            {selecionada && (
+                              <svg width="9" height="9" viewBox="0 0 10 10" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round">
+                                <polyline points="1.5 5 4 7.5 8.5 2.5"/>
+                              </svg>
+                            )}
+                          </div>
+                          <span style={{
+                            fontSize: '0.85rem', fontFamily: 'Inter, sans-serif',
+                            color: selecionada ? 'var(--texto)' : 'var(--texto-apagado)',
+                            fontWeight: selecionada ? '500' : '400',
+                            flex: 1,
+                          }}>
+                            {t.descricao}
+                          </span>
+                          {t.responsavel?.nome && (
+                            <span style={{ fontSize: '0.72rem', color: 'var(--texto-apagado)', whiteSpace: 'nowrap' }}>
+                              {t.responsavel.nome}
+                            </span>
+                          )}
+                        </div>
+                      )
+                    })}
                   </div>
                 )}
-
-                {/* Busca de tarefa */}
-                <div style={{ position: 'relative' }}>
-                  <input
-                    style={{ ...s.input, fontSize: '0.82rem' }}
-                    placeholder="Buscar e adicionar tarefa..."
-                    value={busca}
-                    onChange={e => setBuscaTarefa(prev => ({ ...prev, [setor._id]: e.target.value }))}
-                  />
-                  {busca && filtradas.length > 0 && (
-                    <div style={s.dropdown}>
-                      {filtradas.slice(0, 5).map(t => (
-                        <button key={t._id} style={s.dropdownItem} onClick={() => adicionarTarefa(setor._id, t)}>
-                          {t.descricao}
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                  {busca && filtradas.length === 0 && (
-                    <div style={s.dropdown}>
-                      <p style={{ padding: '10px 14px', fontSize: '0.8rem', color: 'var(--texto-apagado)', margin: 0 }}>
-                        Nenhuma tarefa encontrada. Crie primeiro na aba Tarefas.
-                      </p>
-                    </div>
-                  )}
-                </div>
               </div>
             )
           })}

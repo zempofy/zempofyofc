@@ -1,8 +1,65 @@
 const express = require('express');
 const { autenticar } = require('../middleware/auth');
 const Tarefa = require('../models/Tarefa');
+const Implantacao = require('../models/Implantacao');
 
 const router = express.Router();
+
+// Função auxiliar: sincroniza status da tarefa na implantação vinculada
+async function sincronizarImplantacao(tarefaId, novoStatus, usuarioId) {
+  try {
+    const implantacao = await Implantacao.findOne({
+      'etapas.tarefas.tarefa': tarefaId
+    });
+    if (!implantacao) return;
+
+    let alterou = false;
+    for (const etapa of implantacao.etapas) {
+      const tarefaEtapa = etapa.tarefas.find(t => t.tarefa?.toString() === tarefaId.toString());
+      if (!tarefaEtapa) continue;
+
+      tarefaEtapa.status = novoStatus;
+      if (novoStatus === 'concluida') {
+        tarefaEtapa.concluidaEm = new Date();
+        tarefaEtapa.concluidaPor = usuarioId;
+      } else {
+        tarefaEtapa.concluidaEm = undefined;
+        tarefaEtapa.concluidaPor = undefined;
+      }
+
+      // Verifica se todas as tarefas da etapa foram concluídas
+      const todasConcluidas = etapa.tarefas.every(t => t.status === 'concluida');
+      if (todasConcluidas && novoStatus === 'concluida') {
+        etapa.status = 'concluida';
+        etapa.concluidaEm = new Date();
+        // Desbloqueia próxima etapa
+        const proxima = implantacao.etapas.find(e => e.ordem === etapa.ordem + 1);
+        if (proxima && proxima.status === 'bloqueada') {
+          proxima.status = 'em_andamento';
+          proxima.iniciadaEm = new Date();
+        } else if (!proxima) {
+          implantacao.status = 'concluida';
+          implantacao.concluidaEm = new Date();
+        }
+      } else if (novoStatus === 'pendente' && etapa.status === 'concluida') {
+        // Se desmarcou, reabre a etapa
+        etapa.status = 'em_andamento';
+        etapa.concluidaEm = undefined;
+        if (implantacao.status === 'concluida') {
+          implantacao.status = 'em_andamento';
+          implantacao.concluidaEm = undefined;
+        }
+      }
+
+      alterou = true;
+      break;
+    }
+
+    if (alterou) await implantacao.save();
+  } catch (err) {
+    console.error('Erro ao sincronizar implantação:', err);
+  }
+}
 
 const populateTarefa = (q) => q
   .populate('responsavel', 'nome email avatar')
@@ -125,6 +182,9 @@ router.patch('/:id/concluir', autenticar, async (req, res) => {
     const tarefa = await Tarefa.findOneAndUpdate(filtro,
       { status: 'concluida', concluidaEm: new Date(), concluidaPor: req.usuario._id },
       { new: true });
+    if (!tarefa) return res.status(404).json({ erro: 'Tarefa não encontrada.' });
+    // Sincroniza o status na implantação vinculada (se houver)
+    await sincronizarImplantacao(tarefa._id, 'concluida', req.usuario._id);
     res.json(tarefa);
   } catch (err) {
     res.status(500).json({ erro: 'Erro ao concluir tarefa.' });
@@ -139,6 +199,9 @@ router.patch('/:id/desmarcar', autenticar, async (req, res) => {
     const tarefa = await Tarefa.findOneAndUpdate(filtro,
       { status: 'pendente', $unset: { concluidaEm: '', concluidaPor: '' } },
       { new: true });
+    if (!tarefa) return res.status(404).json({ erro: 'Tarefa não encontrada.' });
+    // Sincroniza o status na implantação vinculada (se houver)
+    await sincronizarImplantacao(tarefa._id, 'pendente', req.usuario._id);
     res.json(tarefa);
   } catch (err) {
     res.status(500).json({ erro: 'Erro ao desmarcar tarefa.' });
