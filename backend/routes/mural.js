@@ -1,5 +1,5 @@
 const express = require('express');
-const { autenticar, apenasGestores } = require('../middleware/auth');
+const { autenticar, temPermissao } = require('../middleware/auth');
 const Aviso = require('../models/Aviso');
 
 const router = express.Router();
@@ -17,7 +17,7 @@ router.get('/', autenticar, async (req, res) => {
 });
 
 // POST /api/mural - Criar aviso (só gestores)
-router.post('/', autenticar, apenasGestores, async (req, res) => {
+router.post('/', autenticar, temPermissao('publicarMural'), async (req, res) => {
   const { titulo, texto, imagem, fixado } = req.body;
   if (!titulo?.trim() || !texto?.trim()) {
     return res.status(400).json({ erro: 'Título e texto são obrigatórios.' });
@@ -36,7 +36,7 @@ router.post('/', autenticar, apenasGestores, async (req, res) => {
 });
 
 // PUT /api/mural/:id - Editar aviso (só gestores)
-router.put('/:id', autenticar, apenasGestores, async (req, res) => {
+router.put('/:id', autenticar, temPermissao('publicarMural'), async (req, res) => {
   try {
     const aviso = await Aviso.findOneAndUpdate(
       { _id: req.params.id, empresa: req.usuario.empresa._id },
@@ -50,7 +50,7 @@ router.put('/:id', autenticar, apenasGestores, async (req, res) => {
 });
 
 // DELETE /api/mural/:id - Excluir aviso (só gestores)
-router.delete('/:id', autenticar, apenasGestores, async (req, res) => {
+router.delete('/:id', autenticar, temPermissao('publicarMural'), async (req, res) => {
   try {
     await Aviso.findOneAndDelete({ _id: req.params.id, empresa: req.usuario.empresa._id });
     res.json({ mensagem: 'Aviso excluído.' });

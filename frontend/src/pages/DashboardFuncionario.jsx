@@ -8,6 +8,12 @@ import Chat from '../components/Chat'
 import Anotacoes from '../components/Anotacoes'
 import Mural from '../components/Mural'
 import Relatorios from '../components/Relatorios'
+import { useToast } from '../components/Toast'
+import Implantacao from '../components/Implantacao'
+import ModelosOnboarding from '../components/ModelosOnboarding'
+import Checklist from '../components/Checklist'
+import Clientes from '../components/Clientes'
+import Setores from '../components/Setores'
 
 // ── Popup com informações da implantação ──
 function PopupOnboarding({ tarefaId, onFechar }) {
@@ -388,8 +394,167 @@ function PaginaInicio({ usuario, tarefas, setPagina }) {
   )
 }
 
+
+// Página de equipe simplificada para colaboradores com permissão
+function PaginaEquipeColaborador() {
+  const [equipe, setEquipe] = useState([])
+  const [carregando, setCarregando] = useState(true)
+  const [mostrarForm, setMostrarForm] = useState(false)
+  const [form, setForm] = useState({ nome: '', email: '', senha: '' })
+  const [erro, setErro] = useState('')
+  const [salvando, setSalvando] = useState(false)
+  const [menuAberto, setMenuAberto] = useState(null)
+  const [confirmandoId, setConfirmandoId] = useState(null)
+  const { mostrar } = useToast()
+
+  const carregar = async () => {
+    try {
+      const res = await api.get('/usuarios')
+      setEquipe(res.data.filter(u => u.cargo !== 'admin'))
+    } catch {}
+    finally { setCarregando(false) }
+  }
+
+  useEffect(() => { carregar() }, [])
+
+  const criar = async (e) => {
+    e.preventDefault()
+    if (!form.nome || !form.email || !form.senha) return setErro('Preencha todos os campos.')
+    setSalvando(true); setErro('')
+    try {
+      await api.post('/usuarios', form)
+      setForm({ nome: '', email: '', senha: '' })
+      setMostrarForm(false)
+      carregar()
+    } catch (err) {
+      setErro(err.response?.data?.erro || 'Erro ao criar colaborador.')
+    } finally { setSalvando(false) }
+  }
+
+  const excluir = async (id) => {
+    try {
+      await api.delete(`/usuarios/${id}`)
+      mostrar('Colaborador removido.', 'aviso')
+      setConfirmandoId(null)
+      carregar()
+    } catch {
+      mostrar('Erro ao remover colaborador.', 'erro')
+    }
+  }
+
+  const membroParaRemover = equipe.find(f => f._id === confirmandoId)
+
+  return (
+    <div>
+      {/* Modal confirmação */}
+      {confirmandoId && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', zIndex: 300, display: 'flex', alignItems: 'center', justifyContent: 'center', backdropFilter: 'blur(4px)' }}
+          onClick={() => setConfirmandoId(null)}>
+          <div style={{ background: 'var(--card)', border: '1px solid var(--borda)', borderRadius: '18px', width: '100%', maxWidth: '380px', margin: '0 16px', overflow: 'hidden' }}
+            onClick={e => e.stopPropagation()}>
+            <div style={{ padding: '24px' }}>
+              <p style={{ fontWeight: '700', fontSize: '1rem', color: 'var(--texto)', marginBottom: '10px', fontFamily: 'Inter, sans-serif' }}>Remover colaborador</p>
+              <p style={{ fontSize: '0.875rem', color: 'var(--texto-apagado)', lineHeight: '1.5', margin: 0 }}>
+                Tem certeza que deseja remover <strong style={{ color: 'var(--texto)' }}>{membroParaRemover?.nome}</strong> da equipe?
+              </p>
+            </div>
+            <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end', padding: '14px 24px', borderTop: '1px solid var(--borda)' }}>
+              <button style={{ background: 'none', border: '1px solid var(--borda)', borderRadius: '8px', color: 'var(--texto-apagado)', padding: '8px 16px', fontFamily: 'Inter, sans-serif', fontSize: '0.875rem', cursor: 'pointer' }}
+                onClick={() => setConfirmandoId(null)}>Cancelar</button>
+              <button style={{ background: 'rgba(248,113,113,0.15)', border: '1px solid rgba(248,113,113,0.3)', borderRadius: '8px', color: '#f87171', padding: '8px 16px', fontFamily: 'Inter, sans-serif', fontWeight: '600', fontSize: '0.875rem', cursor: 'pointer' }}
+                onClick={() => excluir(confirmandoId)}>Remover</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '28px', flexWrap: 'wrap', gap: '16px' }}>
+        <div>
+          <h1 style={{ fontSize: '1.75rem', fontWeight: '700', color: 'var(--texto)', letterSpacing: '-0.03em', marginBottom: '4px' }}>Equipe</h1>
+          <p style={{ color: 'var(--texto-apagado)', fontSize: '0.875rem' }}>{equipe.length} colaborador(es)</p>
+        </div>
+        <button
+          style={{ background: 'var(--gradiente-verde)', color: '#fff', border: 'none', borderRadius: '10px', padding: '10px 20px', fontFamily: 'Inter, sans-serif', fontWeight: '600', fontSize: '0.875rem', cursor: 'pointer', boxShadow: '0 2px 8px rgba(0,177,65,0.3)' }}
+          onClick={() => setMostrarForm(!mostrarForm)}
+        >
+          {mostrarForm ? '✕ Cancelar' : '+ Novo membro'}
+        </button>
+      </div>
+
+      {mostrarForm && (
+        <div style={{ background: 'var(--card)', border: '1px solid var(--borda)', borderRadius: '14px', padding: '20px', marginBottom: '20px' }}>
+          {erro && <p style={{ color: '#f87171', fontSize: '0.8rem', marginBottom: '12px' }}>{erro}</p>}
+          <form onSubmit={criar} style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '12px', alignItems: 'end' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+              <label style={{ fontSize: '0.68rem', fontWeight: '700', color: 'var(--texto-apagado)', textTransform: 'uppercase', letterSpacing: '0.8px' }}>Nome</label>
+              <input style={{ background: 'var(--input)', border: '1px solid var(--borda)', borderRadius: '10px', padding: '10px 14px', color: 'var(--texto)', fontSize: '0.9rem', fontFamily: 'Inter, sans-serif', boxSizing: 'border-box' }}
+                placeholder="Nome completo" value={form.nome} onChange={e => setForm({ ...form, nome: e.target.value })} required />
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+              <label style={{ fontSize: '0.68rem', fontWeight: '700', color: 'var(--texto-apagado)', textTransform: 'uppercase', letterSpacing: '0.8px' }}>E-mail</label>
+              <input style={{ background: 'var(--input)', border: '1px solid var(--borda)', borderRadius: '10px', padding: '10px 14px', color: 'var(--texto)', fontSize: '0.9rem', fontFamily: 'Inter, sans-serif', boxSizing: 'border-box' }}
+                type="email" placeholder="email@empresa.com" value={form.email} onChange={e => setForm({ ...form, email: e.target.value })} required />
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+              <label style={{ fontSize: '0.68rem', fontWeight: '700', color: 'var(--texto-apagado)', textTransform: 'uppercase', letterSpacing: '0.8px' }}>Senha temporária</label>
+              <input style={{ background: 'var(--input)', border: '1px solid var(--borda)', borderRadius: '10px', padding: '10px 14px', color: 'var(--texto)', fontSize: '0.9rem', fontFamily: 'Inter, sans-serif', boxSizing: 'border-box' }}
+                type="password" placeholder="Mínimo 6 caracteres" value={form.senha} onChange={e => setForm({ ...form, senha: e.target.value })} required />
+            </div>
+            <button type="submit" disabled={salvando}
+              style={{ background: 'var(--gradiente-verde)', color: '#fff', border: 'none', borderRadius: '10px', padding: '10px 20px', fontFamily: 'Inter, sans-serif', fontWeight: '600', fontSize: '0.875rem', cursor: 'pointer', alignSelf: 'end' }}>
+              {salvando ? 'Criando...' : 'Criar'}
+            </button>
+          </form>
+        </div>
+      )}
+
+      {carregando ? (
+        <p style={{ color: 'var(--texto-apagado)' }}>Carregando...</p>
+      ) : (
+        <div style={{ background: 'var(--card)', border: '1px solid var(--borda)', borderRadius: '16px', overflow: 'hidden' }}>
+          {equipe.length === 0 ? (
+            <p style={{ color: 'var(--texto-apagado)', padding: '20px' }}>Nenhum colaborador cadastrado ainda.</p>
+          ) : equipe.map((f, i) => (
+            <div key={f._id} style={{ display: 'flex', alignItems: 'center', gap: '14px', padding: '14px 20px', borderBottom: i < equipe.length - 1 ? '1px solid var(--borda)' : 'none' }}>
+              <div style={{ width: '38px', height: '38px', borderRadius: '50%', background: 'var(--gradiente-verde)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: '700', fontSize: '14px', color: '#fff', flexShrink: 0 }}>
+                {f.nome.split(' ').slice(0, 2).map(p => p[0]).join('').toUpperCase()}
+              </div>
+              <div style={{ flex: 1 }}>
+                <p style={{ fontSize: '0.9rem', fontWeight: '600', color: 'var(--texto)', margin: 0 }}>{f.nome}</p>
+                <p style={{ fontSize: '0.8rem', color: 'var(--texto-apagado)', margin: 0 }}>{f.email}</p>
+              </div>
+              <span style={{ fontSize: '0.72rem', color: 'var(--texto-apagado)', background: 'var(--input)', borderRadius: '6px', padding: '3px 9px', border: '1px solid var(--borda)' }}>
+                Colaborador
+              </span>
+              {/* Menu "..." */}
+              <div style={{ position: 'relative' }}>
+                <button
+                  style={{ background: 'var(--input)', border: '1px solid var(--borda)', borderRadius: '8px', padding: '6px 10px', color: 'var(--texto-apagado)', fontSize: '1rem', cursor: 'pointer', letterSpacing: '2px', lineHeight: 1 }}
+                  onClick={() => setMenuAberto(menuAberto === f._id ? null : f._id)}
+                >
+                  ···
+                </button>
+                {menuAberto === f._id && (
+                  <div style={{ position: 'absolute', right: 0, zIndex: 10, background: 'var(--card)', border: '1px solid var(--borda)', borderRadius: '10px', overflow: 'hidden', minWidth: '130px', boxShadow: '0 8px 24px rgba(0,0,0,0.4)', ...(i >= equipe.length - 2 ? { bottom: '100%', marginBottom: '4px' } : { top: '100%', marginTop: '4px' }) }}>
+                    <button
+                      style={{ display: 'block', width: '100%', padding: '10px 16px', background: 'none', border: 'none', color: '#f87171', fontSize: '0.85rem', cursor: 'pointer', textAlign: 'left', fontFamily: 'Inter, sans-serif' }}
+                      onClick={() => { setConfirmandoId(f._id); setMenuAberto(null) }}
+                    >
+                      Remover
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
 export default function DashboardFuncionario() {
-  const { usuario } = useAuth()
+  const { usuario, temPermissao } = useAuth()
   const [pagina, setPagina] = useState('inicio')
   const [tarefas, setTarefas] = useState([])
 
@@ -404,11 +569,41 @@ export default function DashboardFuncionario() {
 
   useEffect(() => { carregarDados() }, [])
 
+  // Sidebar dinâmico baseado nas permissões do colaborador
   const menuItens = [
     { id: 'inicio', label: 'Início', icone: <Icone.Home size={16} /> },
     { id: 'tarefas', label: 'Minhas Tarefas', icone: <Icone.ClipboardList size={16} /> },
+
+    // Onboarding — só se tiver permissão
+    ...(temPermissao('gerenciarOnboarding') ? [{
+      id: 'onboarding', label: 'Onboarding', icone: <Icone.ClipboardList size={16} />,
+      subItens: [
+        { id: 'implantacao', label: 'Implantação' },
+        { id: 'modelos', label: 'Modelos' },
+        { id: 'checklist', label: 'Checklist' },
+      ]
+    }] : []),
+
+    // Clientes — só se tiver permissão
+    ...(temPermissao('gerenciarClientes') ? [
+      { id: 'clientes', label: 'Clientes', icone: <Icone.Users size={16} /> }
+    ] : []),
+
+    // Equipe — só se tiver permissão
+    ...(temPermissao('gerenciarEquipe') ? [{
+      id: 'gestao', label: 'Gestão', icone: <Icone.UsersThree size={16} />,
+      subItens: [
+        { id: 'equipe', label: 'Equipe' },
+      ]
+    }] : []),
+
     { id: 'anotacoes', label: 'Anotações', icone: <Icone.Edit size={16} /> },
-    { id: 'relatorios', label: 'Relatórios', icone: <Icone.BarChart size={16} /> },
+
+    // Relatórios — só se tiver permissão
+    ...(temPermissao('verRelatorios') ? [
+      { id: 'relatorios', label: 'Relatórios', icone: <Icone.BarChart size={16} /> }
+    ] : []),
+
     { id: 'mural', label: 'Mural', icone: <Icone.Bell size={16} /> },
   ]
 
@@ -417,6 +612,12 @@ export default function DashboardFuncionario() {
       {pagina === 'inicio' && <PaginaInicio usuario={usuario} tarefas={tarefas} setPagina={setPagina} />}
       {pagina === 'tarefas' && <PaginaMinhasTarefas tarefas={tarefas} recarregar={carregarDados} />}
       {pagina === 'agenda' && <Agenda cargo="funcionario" usuarioAtualId={usuario?.id} />}
+      {pagina === 'implantacao' && <Implantacao />}
+      {pagina === 'modelos' && <ModelosOnboarding />}
+      {pagina === 'checklist' && <Checklist />}
+      {pagina === 'clientes' && <Clientes />}
+      {pagina === 'equipe' && <PaginaEquipeColaborador />}
+      {pagina === 'onboarding' && <Implantacao />}
       {pagina === 'chat' && <Chat setPagina={setPagina} />}
       {pagina === 'anotacoes' && <Anotacoes />}
       {pagina === 'relatorios' && <Relatorios />}

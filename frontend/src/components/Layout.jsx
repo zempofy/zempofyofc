@@ -68,7 +68,7 @@ function ModalAcessoSenha({ usuario, fechar, onNomeAtualizado }) {
           <Avatar nome={usuario?.nome} foto={usuario?.avatar} size={44} fontSize={18} />
           <div>
             <p style={stylesModal.infoNome}>{usuario?.nome}</p>
-            <p style={stylesModal.infoCargo}>{usuario?.cargo === 'admin' ? 'Dono' : usuario?.cargo === 'administrador' ? 'Administrador' : 'Colaborador'}</p>
+            <p style={stylesModal.infoCargo}>{usuario?.cargo === 'admin' ? 'Titular' : 'Colaborador'}</p>
           </div>
         </div>
 
@@ -530,7 +530,7 @@ export default function Layout({ children, menuItens, paginaAtual, setPagina }) 
             <div style={styles.avatarInfo}>
               <span style={styles.avatarNome}>{usuario?.nome}</span>
               <span style={styles.avatarCargo}>
-                {usuario?.cargo === 'admin' ? 'Dono' : usuario?.cargo === 'administrador' ? 'Administrador' : 'Colaborador'}
+                {usuario?.cargo === 'admin' ? 'Titular' : 'Colaborador'}
               </span>
             </div>
           </button>

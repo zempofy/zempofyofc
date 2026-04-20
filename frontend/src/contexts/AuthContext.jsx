@@ -51,8 +51,15 @@ export function AuthProvider({ children }) {
     setUsuario(null)
   }
 
+  // Verifica se o usuário logado tem uma permissão específica
+  const temPermissao = (permissao) => {
+    if (!usuario) return false
+    if (usuario.cargo === 'admin') return true
+    return !!usuario.permissoes?.[permissao]
+  }
+
   return (
-    <AuthContext.Provider value={{ usuario, carregando, login, cadastrar, sair, recarregarUsuario }}>
+    <AuthContext.Provider value={{ usuario, carregando, login, cadastrar, sair, recarregarUsuario, temPermissao }}>
       {children}
     </AuthContext.Provider>
   )
