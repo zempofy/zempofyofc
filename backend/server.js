@@ -16,6 +16,7 @@ const modeloOnboardingRoutes = require('./routes/modeloOnboarding');
 const implantacaoRoutes = require('./routes/implantacao');
 const checklistRoutes = require('./routes/checklist');
 const clienteRoutes = require('./routes/cliente');
+const painelRoutes = require('./routes/painel');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -41,6 +42,7 @@ app.use('/api/modelos-onboarding', modeloOnboardingRoutes);
 app.use('/api/implantacoes', implantacaoRoutes);
 app.use('/api/checklist', checklistRoutes);
 app.use('/api/clientes', clienteRoutes);
+app.use('/api/painel', painelRoutes);
 
 app.get('/', (req, res) => {
   res.json({ mensagem: 'Zempofy API rodando 🚀' });
