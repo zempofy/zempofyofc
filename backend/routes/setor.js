@@ -81,6 +81,24 @@ router.put('/:id', autenticar, apenasAdmin, async (req, res) => {
 });
 
 // DELETE /api/setores/:id - Desativar setor (soft delete)
+
+// PATCH /api/setores/:id/membros — adiciona um membro ao setor
+router.patch('/:id/membros', autenticar, async (req, res) => {
+  const { usuarioId } = req.body;
+  if (!usuarioId) return res.status(400).json({ erro: 'usuarioId é obrigatório.' });
+  try {
+    const setor = await Setor.findOneAndUpdate(
+      { _id: req.params.id, empresa: req.usuario.empresa._id },
+      { $addToSet: { membros: usuarioId } },
+      { new: true }
+    ).populate('membros', 'nome email avatar cargo');
+    if (!setor) return res.status(404).json({ erro: 'Setor não encontrado.' });
+    res.json(setor);
+  } catch (err) {
+    res.status(500).json({ erro: 'Erro ao adicionar membro ao setor.' });
+  }
+});
+
 router.delete('/:id', autenticar, apenasAdmin, async (req, res) => {
   try {
     const setor = await Setor.findOneAndUpdate(

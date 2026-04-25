@@ -109,7 +109,6 @@ function FormModelo({ modelo, fechar, onSalvo }) {
       if (lista.find(t => t._id === tarefa._id)) return prev
       return { ...prev, [setorId]: [...lista, tarefa] }
     })
-    setBuscaTarefa(prev => ({ ...prev, [setorId]: '' }))
   }
 
   const removerTarefa = (setorId, tarefaId) => {

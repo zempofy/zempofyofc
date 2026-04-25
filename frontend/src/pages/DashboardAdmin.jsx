@@ -220,7 +220,10 @@ function PaginaEquipe({ usuario, equipe, recarregar }) {
       const res = await api.post('/usuarios', { ...form, permissoes })
       // Se selecionou setor, adiciona o colaborador ao setor
       if (form.setorId && res?.data?.id) {
-        await api.patch(`/setores/${form.setorId}/membros`, { usuarioId: res.data.id }).catch(() => {})
+        if (res?.data?.id || res?.data?._id) {
+        const uid = res.data.id || res.data._id
+        await api.patch(`/setores/${form.setorId}/membros`, { usuarioId: uid }).catch(() => {})
+      }
       }
       setForm({ nome: '', email: '', senha: '', setorId: '' })
       setPermissoes({ ...PERMISSOES_VAZIAS })
