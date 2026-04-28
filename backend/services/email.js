@@ -11,7 +11,7 @@ const template = (titulo, corpo) => `
 <style>
   body { margin:0; padding:0; background:#09090b; font-family:'Segoe UI',Arial,sans-serif; }
   .wrap { max-width:560px; margin:40px auto; background:#18181b; border:1px solid #27272a; border-radius:16px; overflow:hidden; }
-  .top { background:#00b141; padding:22px 32px; }
+  .top { background:#00b141; padding:28px 32px; }
   .top h1 { color:#fff; margin:0; font-size:1.3rem; letter-spacing:-0.02em; }
   .body { padding:28px 32px; }
   .body p { color:#a1a1aa; font-size:0.9rem; line-height:1.7; margin:0 0 16px; }
@@ -110,4 +110,31 @@ const enviarTarefaAtribuida = async ({ destinatario, descricao, criadoPor, data,
   }
 };
 
-module.exports = { enviarOnboardingCriado, enviarEtapaDesbloqueada, enviarTarefaAtribuida };
+
+// 4. E-mail de verificação de conta
+const enviarVerificacaoEmail = async ({ destinatario, nome, token }) => {
+  if (!destinatario) return;
+  const link = `https://app.zempofy.com.br/verificar-email?token=${token}`;
+  const corpo = `
+    <p>Olá, <strong>${nome}</strong>! Seja bem-vindo ao Zempofy.</p>
+    <p>Para garantir que temos o e-mail certo e que você receba todas as notificações do sistema, precisamos verificar seu endereço de e-mail.</p>
+    <div class="card">
+      <p>Clique no botão abaixo para verificar</p>
+      <span>O link expira em 48 horas</span>
+    </div>
+    <a class="btn" href="${link}">Verificar meu e-mail</a>
+    <p style="margin-top:16px;font-size:0.8rem;">Se você não criou uma conta no Zempofy, ignore este e-mail.</p>
+  `;
+  try {
+    await resend.emails.send({
+      from: FROM,
+      to: [destinatario],
+      subject: 'Verifique seu e-mail — Zempofy',
+      html: template('Confirme seu e-mail', corpo),
+    });
+  } catch (err) {
+    console.error('Erro ao enviar e-mail de verificação:', err);
+  }
+};
+
+module.exports = { enviarOnboardingCriado, enviarEtapaDesbloqueada, enviarTarefaAtribuida, enviarVerificacaoEmail };

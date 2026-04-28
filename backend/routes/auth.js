@@ -1,8 +1,12 @@
 const express = require('express');
 const jwt = require('jsonwebtoken');
-const Usuario = require('../models/Usuario');
 const Empresa = require('../models/Empresa');
 const { autenticar } = require('../middleware/auth');
+const { enviarVerificacaoEmail } = require('../services/email');
+const crypto = require('crypto');
+
+// Lazy require para evitar dependência circular com middleware/auth
+const getUsuario = () => require('../models/Usuario');
 
 const router = express.Router();
 
@@ -25,7 +29,7 @@ router.post('/cadastro', async (req, res) => {
 
   try {
     // Verificar se email já existe
-    const emailExiste = await Usuario.findOne({ email });
+    const emailExiste = await getUsuario().findOne({ email });
     if (emailExiste) {
       return res.status(400).json({ erro: 'Este e-mail já está em uso.' });
     }
@@ -44,7 +48,7 @@ router.post('/cadastro', async (req, res) => {
     const empresa = await Empresa.create({ nome: nomeEmpresa, slug, cnpj });
 
     // Criar usuário admin
-    const admin = await Usuario.create({
+    const admin = await getUsuario().create({
       nome: nomeAdmin,
       email,
       senha,
@@ -53,6 +57,11 @@ router.post('/cadastro', async (req, res) => {
     });
 
     const token = gerarToken(admin);
+
+    // Gerar token de verificação e enviar e-mail
+    const tokenVerif = crypto.randomBytes(32).toString('hex');
+    await getUsuario().findByIdAndUpdate(admin._id, { tokenVerificacao: tokenVerif });
+    setImmediate(() => enviarVerificacaoEmail({ destinatario: email, nome: nomeAdmin, token: tokenVerif }));
 
     res.status(201).json({
       token,
@@ -79,7 +88,7 @@ router.post('/login', async (req, res) => {
   }
 
   try {
-    const usuario = await Usuario.findOne({ email }).populate('empresa');
+    const usuario = await getUsuario().findOne({ email }).populate('empresa');
 
     if (!usuario || !usuario.ativo) {
       return res.status(401).json({ erro: 'E-mail ou senha incorretos.' });
@@ -101,6 +110,7 @@ router.post('/login', async (req, res) => {
         cargo: usuario.cargo,
         avatar: usuario.avatar || '',
         permissoes: usuario.permissoes || {},
+        emailVerificado: usuario.emailVerificado || false,
         empresa: { id: usuario.empresa._id, nome: usuario.empresa.nome }
       }
     });
@@ -120,8 +130,37 @@ router.get('/me', autenticar, (req, res) => {
     cargo: u.cargo,
     avatar: u.avatar || '',
     permissoes: u.permissoes || {},
+    emailVerificado: u.emailVerificado || false,
     empresa: { id: u.empresa._id, nome: u.empresa.nome }
   });
 });
 
 module.exports = router;
+
+// GET /api/auth/verificar-email?token=xxx
+router.get('/verificar-email', async (req, res) => {
+  const { token } = req.query;
+  if (!token) return res.status(400).json({ erro: 'Token inválido.' });
+  try {
+    const usuario = await getUsuario().findOne({ tokenVerificacao: token });
+    if (!usuario) return res.status(400).json({ erro: 'Token inválido ou expirado.' });
+    await getUsuario().findByIdAndUpdate(usuario._id, { emailVerificado: true, tokenVerificacao: null });
+    res.json({ mensagem: 'E-mail verificado com sucesso!' });
+  } catch (err) {
+    res.status(500).json({ erro: 'Erro ao verificar e-mail.' });
+  }
+});
+
+// POST /api/auth/reenviar-verificacao
+router.post('/reenviar-verificacao', autenticar, async (req, res) => {
+  try {
+    if (req.usuario.emailVerificado) return res.json({ mensagem: 'E-mail já verificado.' });
+    const token = crypto.randomBytes(32).toString('hex');
+    await getUsuario().findByIdAndUpdate(req.usuario._id, { tokenVerificacao: token });
+    setImmediate(() => enviarVerificacaoEmail({ destinatario: req.usuario.email, nome: req.usuario.nome, token }));
+    res.json({ mensagem: 'E-mail de verificação reenviado!' });
+  } catch (err) {
+    res.status(500).json({ erro: 'Erro ao reenviar e-mail.' });
+  }
+});
+

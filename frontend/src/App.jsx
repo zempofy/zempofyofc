@@ -6,6 +6,7 @@ import Login from './pages/Login'
 import Cadastro from './pages/Cadastro'
 import DashboardAdmin from './pages/DashboardAdmin'
 import DashboardFuncionario from './pages/DashboardFuncionario'
+import VerificarEmail from './pages/VerificarEmail'
 
 // Gestor = admin ou administrador → vai pro painel admin
 const isGestor = (cargo) => ['admin', 'administrador'].includes(cargo)
@@ -54,6 +55,7 @@ export default function App() {
                   <DashboardAdmin />
                 </RotaProtegida>
               } />
+              <Route path="/verificar-email" element={<VerificarEmail />} />
               <Route path="/dashboard/*" element={
                 <RotaProtegida apenasColaborador>
                   <DashboardFuncionario />

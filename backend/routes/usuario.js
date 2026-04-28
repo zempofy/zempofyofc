@@ -1,5 +1,7 @@
 const express = require('express');
 const { autenticar, apenasAdmin } = require('../middleware/auth');
+const { enviarVerificacaoEmail } = require('../services/email');
+const crypto = require('crypto');
 const Usuario = require('../models/Usuario');
 
 const router = express.Router();
@@ -65,12 +67,17 @@ router.post('/', autenticar, apenasAdmin, async (req, res) => {
   try {
     const emailExiste = await Usuario.findOne({ email });
     if (emailExiste) return res.status(400).json({ erro: 'E-mail já em uso.' });
+    const tokenVerif = crypto.randomBytes(32).toString('hex');
     const usuario = await Usuario.create({
       nome, email, senha,
       cargo: 'colaborador',
       permissoes: permissoes || {},
-      empresa: req.usuario.empresa._id
+      empresa: req.usuario.empresa._id,
+      tokenVerificacao: tokenVerif,
+      emailVerificado: false,
     });
+    // Envia e-mail de verificação pro colaborador
+    setImmediate(() => enviarVerificacaoEmail({ destinatario: email, nome, token: tokenVerif }));
     res.status(201).json({ id: usuario._id, nome: usuario.nome, email: usuario.email, cargo: usuario.cargo, permissoes: usuario.permissoes });
   } catch (err) {
     res.status(500).json({ erro: 'Erro ao criar usuário.' });

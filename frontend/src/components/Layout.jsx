@@ -6,6 +6,7 @@ import ModalConfiguracoes from './ModalConfiguracoes'
 import Icone from './Icones'
 import Avatar from './Avatar'
 import Modal from './Modal'
+import { useToast } from './Toast'
 
 function ModalAcessoSenha({ usuario, fechar, onNomeAtualizado }) {
   const [aba, setAba] = useState(null) // null | 'nome' | 'email' | 'senha'
@@ -458,6 +459,51 @@ function NavItens({ menuItens, paginaAtual, setPagina, sidebarAberta }) {
   )
 }
 
+
+function BannerVerificacao() {
+  const { usuario } = useAuth()
+  const [enviando, setEnviando] = useState(false)
+  const [enviado, setEnviado] = useState(false)
+  const { mostrar } = useToast()
+
+  const reenviar = async () => {
+    setEnviando(true)
+    try {
+      await api.post('/auth/reenviar-verificacao')
+      setEnviado(true)
+      mostrar('E-mail de verificação reenviado!', 'sucesso')
+    } catch {
+      mostrar('Erro ao reenviar e-mail.', 'erro')
+    } finally {
+      setEnviando(false)
+    }
+  }
+
+  return (
+    <div style={{
+      position: 'fixed', top: '52px', left: 0, right: 0, zIndex: 99,
+      background: 'rgba(245,158,11,0.12)', borderBottom: '1px solid rgba(245,158,11,0.25)',
+      padding: '10px 20px', display: 'flex', alignItems: 'center',
+      justifyContent: 'center', gap: '12px', flexWrap: 'wrap'
+    }}>
+      <span style={{ fontSize: '0.82rem', color: '#FCD34D', fontFamily: 'Inter, sans-serif' }}>
+        ⚠️ Seu e-mail ainda não foi verificado. Verifique sua caixa de entrada.
+      </span>
+      {!enviado ? (
+        <button
+          onClick={reenviar}
+          disabled={enviando}
+          style={{ background: 'rgba(245,158,11,0.2)', border: '1px solid rgba(245,158,11,0.4)', borderRadius: '6px', color: '#FCD34D', padding: '4px 12px', fontSize: '0.78rem', cursor: 'pointer', fontFamily: 'Inter, sans-serif', fontWeight: '600' }}
+        >
+          {enviando ? 'Enviando...' : 'Reenviar e-mail'}
+        </button>
+      ) : (
+        <span style={{ fontSize: '0.78rem', color: '#4ADE80' }}>✓ E-mail enviado!</span>
+      )}
+    </div>
+  )
+}
+
 export default function Layout({ children, menuItens, paginaAtual, setPagina }) {
   const { usuario, sair, recarregarUsuario } = useAuth()
   const [sidebarAberta, setSidebarAberta] = useState(true)
@@ -492,6 +538,9 @@ export default function Layout({ children, menuItens, paginaAtual, setPagina }) 
           opacity: 1;
         }
       `}</style>
+
+      {/* Banner verificação de e-mail */}
+      {usuario && !usuario.emailVerificado && <BannerVerificacao />}
 
       {/* ===== BARRA SUPERIOR ===== */}
       <header style={styles.topbar}>
