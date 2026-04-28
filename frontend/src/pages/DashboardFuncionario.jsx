@@ -276,12 +276,6 @@ function PaginaMinhasTarefas({ tarefas, recarregar }) {
         ) : (
           <>
             {onbPendentes.map(t => <CardTarefa key={t._id} t={t} />)}
-            {onbConcluidas.length > 0 && (
-              <>
-                <p style={styles.subLabel}>Concluídas</p>
-                {onbConcluidas.map(t => <CardTarefa key={t._id} t={t} />)}
-              </>
-            )}
           </>
         )}
       </div>
@@ -292,7 +286,7 @@ function PaginaMinhasTarefas({ tarefas, recarregar }) {
           <h2 style={styles.secaoTitulo}>Minhas tarefas</h2>
           <span style={styles.badgeContadorNeutro}>{normaisPendentes.length} pendente(s)</span>
         </div>
-        {normaisPendentes.length === 0 && normaisConcluidas.length === 0 ? (
+        {normaisPendentes.length === 0 && normaisConcluidas.length === 0 && onbConcluidas.length === 0 ? (
           <div style={styles.vazio}>
             <Icone.CheckCircle size={32} style={{ color: 'var(--verde)', opacity: 0.4 }} />
             <p>Nenhuma tarefa ainda. Use "+ Nova tarefa" para criar.</p>
@@ -300,9 +294,10 @@ function PaginaMinhasTarefas({ tarefas, recarregar }) {
         ) : (
           <>
             {normaisPendentes.map(t => <CardTarefa key={t._id} t={t} />)}
-            {normaisConcluidas.length > 0 && (
+            {(normaisConcluidas.length > 0 || onbConcluidas.length > 0) && (
               <>
                 <p style={styles.subLabel}>Concluídas</p>
+                {onbConcluidas.map(t => <CardTarefa key={t._id} t={t} />)}
                 {normaisConcluidas.map(t => <CardTarefa key={t._id} t={t} />)}
               </>
             )}

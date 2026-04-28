@@ -954,12 +954,6 @@ function PaginaTarefas({ tarefas, funcionarios, recarregar }) {
             ) : (
               <>
                 {onbPendentes.map(t => <CardComInfo key={t._id} t={t} />)}
-                {onbConcluidas.length > 0 && (
-                  <>
-                    <p style={{ fontSize: '0.68rem', fontWeight: '700', color: 'var(--texto-apagado)', textTransform: 'uppercase', letterSpacing: '0.8px', margin: '16px 0 8px' }}>Concluídas</p>
-                    {onbConcluidas.map(t => <CardComInfo key={t._id} t={t} concluida />)}
-                  </>
-                )}
               </>
             )}
           </div>
@@ -967,14 +961,15 @@ function PaginaTarefas({ tarefas, funcionarios, recarregar }) {
           {/* ── TAREFAS DA EQUIPE ── */}
           <div style={styles.secao}>
             <SecaoHeader titulo="Tarefas da equipe" count={normaisPendentes.length} verde={false} />
-            {normaisPendentes.length === 0 && normaisConcluidas.length === 0 ? (
+            {normaisPendentes.length === 0 && normaisConcluidas.length === 0 && onbConcluidas.length === 0 ? (
               <p style={{ color: 'var(--texto-apagado)', fontSize: '0.875rem' }}>Nenhuma tarefa criada ainda. Use "+ Nova tarefa" para começar.</p>
             ) : (
               <>
                 {normaisPendentes.map(t => <CardComInfo key={t._id} t={t} />)}
-                {normaisConcluidas.length > 0 && (
+                {(normaisConcluidas.length > 0 || onbConcluidas.length > 0) && (
                   <>
                     <p style={{ fontSize: '0.68rem', fontWeight: '700', color: 'var(--texto-apagado)', textTransform: 'uppercase', letterSpacing: '0.8px', margin: '16px 0 8px' }}>Concluídas</p>
+                    {onbConcluidas.map(t => <CardComInfo key={t._id} t={t} concluida />)}
                     {normaisConcluidas.map(t => <CardComInfo key={t._id} t={t} concluida />)}
                   </>
                 )}
