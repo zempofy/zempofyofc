@@ -9,7 +9,7 @@ const template = (titulo, corpo) => `
 <html lang="pt-BR">
 <head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
 <style>
-  body { margin:0; padding:0; background:#09090b; font-family:'Segoe UI',Arial,sans-serif; }
+  body { margin:0; padding:0; background:#09090b !important; font-family:'Segoe UI',Arial,sans-serif; }
   .wrap { max-width:560px; margin:40px auto; background:#18181b; border:1px solid #27272a; border-radius:16px; overflow:hidden; }
   .top { background:#00b141; padding:28px 32px; }
   .top h1 { color:#fff; margin:0; font-size:1.3rem; letter-spacing:-0.02em; }
@@ -24,7 +24,7 @@ const template = (titulo, corpo) => `
   .foot p { color:#52525b; font-size:0.75rem; margin:0; }
 </style>
 </head>
-<body>
+<body bgcolor="#09090b" style="background:#09090b;margin:0;padding:0;">
   <div class="wrap">
     <div class="top"><h1>Zempofy</h1></div>
     <div class="body">

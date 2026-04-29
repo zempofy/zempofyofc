@@ -20,8 +20,7 @@ function SeletorEmoji({ onSelecionar, fechar }) {
 }
 
 function labelCargo(cargo) {
-  if (cargo === 'admin') return 'Dono'
-  if (cargo === 'administrador') return 'Administrador'
+  if (cargo === 'admin') return 'Titular'
   return 'Colaborador'
 }
 

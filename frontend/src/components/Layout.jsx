@@ -6,6 +6,7 @@ import ModalConfiguracoes from './ModalConfiguracoes'
 import Icone from './Icones'
 import Avatar from './Avatar'
 import Modal from './Modal'
+import WidgetFeedback from './WidgetFeedback'
 import { useToast } from './Toast'
 
 function ModalAcessoSenha({ usuario, fechar, onNomeAtualizado }) {
@@ -500,6 +501,7 @@ function BannerVerificacao() {
       ) : (
         <span style={{ fontSize: '0.78rem', color: '#4ADE80' }}>✓ E-mail enviado!</span>
       )}
+    <WidgetFeedback />
     </div>
   )
 }
@@ -633,6 +635,7 @@ export default function Layout({ children, menuItens, paginaAtual, setPagina }) 
           {children}
         </div>
       </main>
+    <WidgetFeedback />
     </div>
   )
 }
