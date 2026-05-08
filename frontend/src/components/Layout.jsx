@@ -410,19 +410,27 @@ function NavItens({ menuItens, paginaAtual, setPagina, sidebarAberta }) {
                 className="nav-btn"
                 style={{
                   ...styles.navBtn,
-                  ...(subAtivo && !aberto ? styles.navBtnAtivo : {}),
+                  ...(subAtivo ? styles.navBtnGrupoAtivo : {}),
                   justifyContent: sidebarAberta ? 'space-between' : 'center',
                 }}
                 onClick={() => toggleGrupo(item.id)}
                 title={!sidebarAberta ? item.label : ''}
               >
                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                  <span style={styles.navIcone}>{item.icone}</span>
-                  {sidebarAberta && <span style={styles.navLabel}>{item.label}</span>}
+                  <span style={{
+                    ...styles.navIcone,
+                    color: subAtivo ? 'var(--verde)' : 'inherit',
+                    opacity: subAtivo ? 1 : 0.75,
+                  }}>{item.icone}</span>
+                  {sidebarAberta && <span style={{
+                    ...styles.navLabel,
+                    color: subAtivo ? 'rgba(255,255,255,0.9)' : 'inherit',
+                  }}>{item.label}</span>}
                 </div>
                 {sidebarAberta && (
                   <span style={{
-                    fontSize: '9px', color: 'var(--texto-apagado)',
+                    fontSize: '9px',
+                    color: subAtivo ? 'var(--verde)' : 'var(--texto-apagado)',
                     transition: 'transform 0.2s',
                     transform: aberto ? 'rotate(90deg)' : 'rotate(0deg)',
                     display: 'flex', alignItems: 'center',
@@ -744,40 +752,40 @@ const styles = {
   },
   nav: {
     flex: 1,
-    padding: '8px 8px',
-    display: 'flex', flexDirection: 'column', gap: '1px',
+    padding: '8px 6px',
+    display: 'flex', flexDirection: 'column', gap: '2px',
     overflowY: 'auto',
     overflowX: 'hidden',
   },
 
   // Separador de seção
   navSeparador: {
-    fontSize: '0.6rem',
+    fontSize: '0.65rem',
     fontWeight: '700',
-    color: 'rgba(255,255,255,0.22)',
+    color: 'rgba(255,255,255,0.25)',
     textTransform: 'uppercase',
     letterSpacing: '1.5px',
-    padding: '14px 10px 5px',
+    padding: '20px 10px 6px',
     fontFamily: 'Inter, sans-serif',
     whiteSpace: 'nowrap',
   },
   navSeparadorFechado: {
     height: '1px',
     background: 'rgba(255,255,255,0.05)',
-    margin: '8px 10px',
+    margin: '10px 10px',
   },
 
   // Item de navegação
   navBtn: {
-    display: 'flex', alignItems: 'center', gap: '9px',
-    padding: '7px 10px',
-    borderRadius: '7px',
+    display: 'flex', alignItems: 'center', gap: '10px',
+    padding: '9px 12px',
+    borderRadius: '8px',
     background: 'none',
     border: 'none',
     borderLeft: '3px solid transparent',
-    color: 'rgba(255,255,255,0.5)',
+    color: 'rgba(255,255,255,0.55)',
     cursor: 'pointer',
-    fontSize: '0.82rem',
+    fontSize: '0.875rem',
     fontFamily: 'Inter, sans-serif',
     transition: 'all 0.12s',
     width: '100%',
@@ -787,20 +795,27 @@ const styles = {
   },
   navBtnAtivo: {
     borderLeft: '3px solid var(--verde)',
-    background: 'rgba(0,177,65,0.07)',
+    background: 'rgba(0,177,65,0.08)',
     color: '#fff',
     fontWeight: '600',
-    borderRadius: '0 7px 7px 0',
+    borderRadius: '0 8px 8px 0',
+  },
+  navBtnGrupoAtivo: {
+    borderLeft: '3px solid rgba(0,177,65,0.4)',
+    background: 'rgba(0,177,65,0.04)',
+    color: 'rgba(255,255,255,0.9)',
+    fontWeight: '600',
+    borderRadius: '0 8px 8px 0',
   },
   navBtnSub: {
-    padding: '6px 10px 6px 8px',
-    fontSize: '0.8rem',
+    padding: '7px 12px 7px 10px',
+    fontSize: '0.85rem',
   },
   navIcone: {
     flexShrink: 0,
-    width: '18px',
+    width: '20px',
     display: 'flex', alignItems: 'center', justifyContent: 'center',
-    opacity: 0.7,
+    opacity: 0.75,
   },
   navLabel: {
     fontSize: 'inherit',
@@ -808,21 +823,21 @@ const styles = {
     letterSpacing: '-0.01em',
   },
   navDot: {
-    width: '4px', height: '4px',
+    width: '5px', height: '5px',
     borderRadius: '50%',
     background: 'currentColor',
     flexShrink: 0,
-    marginLeft: '7px',
+    marginLeft: '8px',
     opacity: 0.5,
   },
   subMenu: {
     marginLeft: '0',
     paddingLeft: '0',
-    paddingTop: '1px',
-    paddingBottom: '1px',
+    paddingTop: '2px',
+    paddingBottom: '2px',
     display: 'flex',
     flexDirection: 'column',
-    gap: '1px',
+    gap: '2px',
   },
 
   // Rodapé da sidebar
