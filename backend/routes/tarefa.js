@@ -42,21 +42,39 @@ async function sincronizarImplantacao(tarefaId, novoStatus, usuarioId) {
           // Dispara e-mail pra quem vai agir na próxima etapa
           setImmediate(async () => {
             try {
-              const setorProximo = await require('../models/Setor').findById(proxima.setor);
+              const Setor = require('../models/Setor');
+              const Usuario = require('../models/Usuario');
+              const setorProximo = await Setor.findById(proxima.setor);
               const tarefasProximas = await Tarefa.find({
                 _id: { $in: proxima.tarefas.map(t => t.tarefa) }
-              }).populate('responsavel', 'email');
-              const emailsProximos = [...new Set(
+              }).populate('responsavel', 'email nome');
+
+              // Emails dos responsáveis das tarefas
+              let emailsProximos = [...new Set(
                 tarefasProximas.map(t => t.responsavel?.email).filter(Boolean)
               )];
-              const imp = await Implantacao.findOne({ 'etapas._id': etapa._id });
-              if (imp && emailsProximos.length) {
+
+              // Fallback: se nenhuma tarefa tem responsável, usa todos os membros do setor
+              if (!emailsProximos.length && setorProximo?.membros?.length) {
+                const membros = await Usuario.find({
+                  _id: { $in: setorProximo.membros },
+                  ativo: true,
+                }).select('email');
+                emailsProximos = membros.map(m => m.email).filter(Boolean);
+              }
+
+              // Usar implantacao já carregada em vez de buscar de novo
+              if (emailsProximos.length) {
                 await enviarEtapaDesbloqueada({
                   destinatarios: emailsProximos,
-                  nomeCliente: imp.nomeCliente,
+                  nomeCliente: implantacao.nomeCliente,
                   setor: setorProximo?.nome || 'próximo setor',
                   empresa: '',
                 });
+                console.log('✅ E-mail etapa desbloqueada enviado para:', emailsProximos);
+              } else {
+                console.log('⚠️ Nenhum e-mail encontrado para a próxima etapa. Setor:', proxima.setor);
+                console.log('Tarefas próxima etapa:', proxima.tarefas);
               }
             } catch (e) { console.error('Erro e-mail etapa:', e); }
           });
@@ -94,6 +112,25 @@ router.get('/', autenticar, async (req, res) => {
   try {
     const filtro = { empresa: req.usuario.empresa._id, tarefaMae: null };
     if (req.usuario.cargo === 'colaborador') filtro.responsavel = req.usuario._id;
+
+    // Buscar IDs de tarefas que estão em etapas BLOQUEADAS — não devem aparecer
+    const implantacoes = await Implantacao.find({ empresa: req.usuario.empresa._id, status: { $ne: 'cancelada' } });
+    const idsBloqueadas = new Set();
+    implantacoes.forEach(imp => {
+      imp.etapas.forEach(etapa => {
+        if (etapa.status === 'bloqueada') {
+          etapa.tarefas.forEach(t => {
+            if (t.tarefa) idsBloqueadas.add(t.tarefa.toString());
+          });
+        }
+      });
+    });
+
+    // Excluir tarefas bloqueadas do resultado
+    if (idsBloqueadas.size > 0) {
+      filtro._id = { $nin: [...idsBloqueadas] };
+    }
+
     const tarefas = await populateTarefa(Tarefa.find(filtro)).sort({ criadaEm: -1 });
     res.json(tarefas);
   } catch (err) {

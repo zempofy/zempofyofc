@@ -27,7 +27,7 @@ router.get('/', autenticar, async (req, res) => {
 });
 
 // POST /api/setores/inicializar - Cria os setores padrão (chamado na criação da empresa)
-router.post('/inicializar', autenticar, apenasAdmin, async (req, res) => {
+router.post('/inicializar', autenticar, async (req, res) => {
   try {
     const jaExistem = await Setor.countDocuments({ empresa: req.usuario.empresa._id });
     if (jaExistem > 0) return res.json({ mensagem: 'Setores já inicializados.' });

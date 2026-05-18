@@ -12,7 +12,7 @@ import Relatorios from '../components/Relatorios'
 import { useToast } from '../components/Toast'
 import Implantacao from '../components/Implantacao'
 import ModelosOnboarding from '../components/ModelosOnboarding'
-import Checklist from '../components/Checklist'
+import BancoAtividades from '../components/BancoAtividades'
 import Clientes from '../components/Clientes'
 import Setores from '../components/Setores'
 
@@ -92,6 +92,14 @@ function PopupOnboarding({ tarefaId, onFechar }) {
                   {dados.status === 'concluida' ? 'Concluído' : 'Em andamento'}
                 </span>
               </div>
+              {dados.observacoes && (
+                <div style={{ ...styles.popupLinha, flexDirection: 'column', gap: '6px' }}>
+                  <span style={styles.popupLabel}>Observações</span>
+                  <span style={{ ...styles.popupValor, color: 'var(--texto-apagado)', fontSize: '0.82rem', lineHeight: '1.5', background: 'var(--input)', padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--borda)' }}>
+                    {dados.observacoes}
+                  </span>
+                </div>
+              )}
             </>
           )}
         </div>
@@ -104,7 +112,7 @@ function PopupOnboarding({ tarefaId, onFechar }) {
   , document.body)
 }
 
-function PaginaMinhasTarefas({ tarefas, recarregar }) {
+function PaginaMinhasTarefas({ tarefas, recarregar, modo = 'onboarding' }) {
   const { usuario, temPermissao } = useAuth()
   const podeCriarParaOutros = temPermissao('criarTarefas')
   const [mostrarForm, setMostrarForm] = useState(false)
@@ -142,10 +150,13 @@ function PaginaMinhasTarefas({ tarefas, recarregar }) {
     }).catch(() => {})
   }, [tarefas])
 
+  const [tarefasLocais, setTarefasLocais] = useState(tarefas)
+  useEffect(() => { setTarefasLocais(tarefas) }, [tarefas])
+
   const ehOnboarding = (t) => idsOnboarding.has(t._id)
 
-  const tarefasOnboarding = tarefas.filter(t => ehOnboarding(t))
-  const tarefasNormais = tarefas.filter(t => !ehOnboarding(t))
+  const tarefasOnboarding = tarefasLocais.filter(t => ehOnboarding(t))
+  const tarefasNormais = tarefasLocais.filter(t => !ehOnboarding(t))
 
   const onbPendentes = tarefasOnboarding.filter(t => t.status === 'pendente')
   const onbConcluidas = tarefasOnboarding.filter(t => t.status === 'concluida')
@@ -154,8 +165,16 @@ function PaginaMinhasTarefas({ tarefas, recarregar }) {
   const totalPendentes = tarefas.filter(t => t.status === 'pendente').length
   const totalConcluidas = tarefas.filter(t => t.status === 'concluida').length
 
-  const concluir = async (id) => { await api.patch(`/tarefas/${id}/concluir`); recarregar() }
-  const desmarcar = async (id) => { await api.patch(`/tarefas/${id}/desmarcar`); recarregar() }
+  const concluir = async (id) => {
+    setTarefasLocais(prev => prev.map(t => t._id === id ? { ...t, status: 'concluida' } : t))
+    try { await api.patch(`/tarefas/${id}/concluir`); recarregar() }
+    catch { setTarefasLocais(tarefas) }
+  }
+  const desmarcar = async (id) => {
+    setTarefasLocais(prev => prev.map(t => t._id === id ? { ...t, status: 'pendente' } : t))
+    try { await api.patch(`/tarefas/${id}/desmarcar`); recarregar() }
+    catch { setTarefasLocais(tarefas) }
+  }
 
   const criar = async (e) => {
     e.preventDefault()
@@ -233,19 +252,21 @@ function PaginaMinhasTarefas({ tarefas, recarregar }) {
 
       <div style={styles.cabecalho}>
         <div>
-          <h1 style={styles.titulo}>Minhas Tarefas</h1>
+          <h1 style={styles.titulo}>{modo === 'onboarding' ? 'Tarefas de Onboarding' : 'Minhas Tarefas'}</h1>
           <p style={styles.subtitulo}>{totalPendentes} pendente(s) · {totalConcluidas} concluída(s)</p>
         </div>
-        <button
-          style={mostrarForm ? styles.btnCancelar : styles.btnNovo}
-          onClick={() => { setMostrarForm(!mostrarForm); setErro('') }}
-        >
-          {mostrarForm ? '✕ Cancelar' : '+ Nova tarefa'}
-        </button>
+        {modo === 'minhas' && (
+          <button
+            style={mostrarForm ? styles.btnCancelar : styles.btnNovo}
+            onClick={() => { setMostrarForm(!mostrarForm); setErro('') }}
+          >
+            {mostrarForm ? '✕ Cancelar' : '+ Nova tarefa'}
+          </button>
+        )}
       </div>
 
-      {/* Formulário nova tarefa */}
-      {mostrarForm && (
+      {/* Formulário nova tarefa — só no modo minhas */}
+      {modo === 'minhas' && mostrarForm && (
         <div style={styles.formulario}>
           <h3 style={{ color: 'var(--texto)', marginBottom: '16px', fontFamily: 'Inter, sans-serif', fontSize: '0.95rem', fontWeight: '600' }}>
             Nova tarefa
@@ -286,47 +307,48 @@ function PaginaMinhasTarefas({ tarefas, recarregar }) {
       )}
 
       {/* ── ONBOARDING DE CLIENTES ── */}
-      <div style={styles.secao}>
-        <div style={styles.secaoHeader}>
-          <h2 style={styles.secaoTitulo}>Onboarding de clientes</h2>
-          <span style={styles.badgeContadorVerde}>{onbPendentes.length} pendente(s)</span>
+      {modo === 'onboarding' && (
+        <div style={styles.secao}>
+          {onbPendentes.length === 0 && onbConcluidas.length === 0 ? (
+            <div style={styles.vazio}>
+              <Icone.ClipboardList size={32} style={{ color: 'var(--borda)', opacity: 0.5 }} />
+              <p>Nenhuma tarefa de onboarding atribuída a você.</p>
+            </div>
+          ) : (
+            <>
+              {onbPendentes.map(t => <CardTarefa key={t._id} t={t} />)}
+              {onbConcluidas.length > 0 && (
+                <>
+                  <p style={styles.subLabel}>Concluídas</p>
+                  {onbConcluidas.map(t => <CardTarefa key={t._id} t={t} />)}
+                </>
+              )}
+            </>
+          )}
         </div>
-        {onbPendentes.length === 0 && onbConcluidas.length === 0 ? (
-          <div style={styles.vazio}>
-            <Icone.ClipboardList size={32} style={{ color: 'var(--borda)', opacity: 0.5 }} />
-            <p>Nenhuma tarefa de onboarding atribuída a você.</p>
-          </div>
-        ) : (
-          <>
-            {onbPendentes.map(t => <CardTarefa key={t._id} t={t} />)}
-          </>
-        )}
-      </div>
+      )}
 
       {/* ── MINHAS TAREFAS ── */}
-      <div style={styles.secao}>
-        <div style={styles.secaoHeader}>
-          <h2 style={styles.secaoTitulo}>Minhas tarefas</h2>
-          <span style={styles.badgeContadorNeutro}>{normaisPendentes.length} pendente(s)</span>
+      {modo === 'minhas' && (
+        <div style={styles.secao}>
+          {normaisPendentes.length === 0 && normaisConcluidas.length === 0 ? (
+            <div style={styles.vazio}>
+              <Icone.CheckCircle size={32} style={{ color: 'var(--verde)', opacity: 0.4 }} />
+              <p>Nenhuma tarefa ainda. Use "+ Nova tarefa" para criar.</p>
+            </div>
+          ) : (
+            <>
+              {normaisPendentes.map(t => <CardTarefa key={t._id} t={t} />)}
+              {normaisConcluidas.length > 0 && (
+                <>
+                  <p style={styles.subLabel}>Concluídas</p>
+                  {normaisConcluidas.map(t => <CardTarefa key={t._id} t={t} />)}
+                </>
+              )}
+            </>
+          )}
         </div>
-        {normaisPendentes.length === 0 && normaisConcluidas.length === 0 && onbConcluidas.length === 0 ? (
-          <div style={styles.vazio}>
-            <Icone.CheckCircle size={32} style={{ color: 'var(--verde)', opacity: 0.4 }} />
-            <p>Nenhuma tarefa ainda. Use "+ Nova tarefa" para criar.</p>
-          </div>
-        ) : (
-          <>
-            {normaisPendentes.map(t => <CardTarefa key={t._id} t={t} />)}
-            {(normaisConcluidas.length > 0 || onbConcluidas.length > 0) && (
-              <>
-                <p style={styles.subLabel}>Concluídas</p>
-                {onbConcluidas.map(t => <CardTarefa key={t._id} t={t} />)}
-                {normaisConcluidas.map(t => <CardTarefa key={t._id} t={t} />)}
-              </>
-            )}
-          </>
-        )}
-      </div>
+      )}
     </div>
   )
 }
@@ -340,91 +362,122 @@ function PaginaInicio({ usuario, tarefas, setPagina }) {
   const pendentes = tarefas.filter(t => t.status === 'pendente')
   const concluidas = tarefas.filter(t => t.status === 'concluida')
   const tarefasHoje = pendentes.filter(t => t.data === hoje)
+  const urgentes = pendentes.filter(t => t.prioridade === 'alta')
 
   useEffect(() => {
-    api.get('/mural').then(r => setAvisos(r.data.slice(0, 1))).catch(() => {})
+    api.get('/mural').then(r => setAvisos(r.data.slice(0, 3))).catch(() => {})
   }, [])
 
+  const metricas = [
+    { label: 'Pendentes', valor: pendentes.length, desc: 'aguardando conclusão', cor: 'rgba(255,255,255,0.5)', icone: <Icone.ClipboardList size={16} /> },
+    { label: 'Para hoje', valor: tarefasHoje.length, desc: 'com prazo hoje', cor: tarefasHoje.length > 0 ? '#fbbf24' : 'rgba(255,255,255,0.5)', destaque: tarefasHoje.length > 0, icone: <Icone.Calendar size={16} /> },
+    { label: 'Concluídas', valor: concluidas.length, desc: 'tarefas finalizadas', cor: 'var(--verde)', icone: <Icone.CheckCircle size={16} /> },
+  ]
+
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-      <div>
-        <h1 style={styles.titulo}>{saudacao}, {usuario.nome.split(' ')[0]}!</h1>
-        <p style={styles.subtitulo}>Veja o que tem pra hoje</p>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '32px' }}>
+
+      {/* Cabeçalho */}
+      <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px' }}>
+        <div>
+          <p style={{ fontSize: '0.72rem', fontWeight: '600', color: 'var(--verde)', textTransform: 'uppercase', letterSpacing: '1.5px', marginBottom: '6px' }}>
+            {usuario.empresa?.nome || 'Zempofy'}
+          </p>
+          <h1 style={{ fontSize: '1.9rem', fontWeight: '700', color: 'var(--texto)', letterSpacing: '-0.04em', lineHeight: 1.1 }}>
+            {saudacao}, {usuario.nome.split(' ')[0]}!
+          </h1>
+        </div>
+        <p style={{ fontSize: '0.75rem', color: 'var(--texto-apagado)' }}>
+          {new Date().toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'long' })}
+        </p>
       </div>
 
-      <div style={styles.cards}>
-        <div style={styles.card}>
-          <span style={styles.cardIcone}><Icone.ClipboardList size={22} /></span>
-          <div>
-            <p style={styles.cardNum}>{pendentes.length}</p>
-            <p style={styles.cardLabel}>Pendentes</p>
+      {/* Métricas */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px' }}>
+        {metricas.map((m, i) => (
+          <div key={i} style={{
+            background: m.destaque ? 'rgba(245,158,11,0.05)' : 'var(--card)',
+            border: `1px solid ${m.destaque ? 'rgba(245,158,11,0.2)' : 'var(--borda)'}`,
+            borderRadius: '14px', padding: '22px 24px',
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
+              <span style={{ fontSize: '0.65rem', fontWeight: '700', color: m.destaque ? 'rgba(245,158,11,0.7)' : 'var(--texto-apagado)', textTransform: 'uppercase', letterSpacing: '1.2px' }}>
+                {m.label}
+              </span>
+              <span style={{ color: m.cor, opacity: 0.7 }}>{m.icone}</span>
+            </div>
+            <p style={{ fontSize: '2.4rem', fontWeight: '700', color: m.destaque ? '#fbbf24' : m.cor === 'var(--verde)' ? 'var(--verde)' : 'var(--texto)', letterSpacing: '-0.04em', lineHeight: 1, marginBottom: '6px' }}>
+              {m.valor}
+            </p>
+            <p style={{ fontSize: '0.72rem', color: 'var(--texto-apagado)' }}>{m.desc}</p>
           </div>
-        </div>
-        <div style={{ ...styles.card, borderColor: tarefasHoje.length > 0 ? 'rgba(245,158,11,0.3)' : undefined }}>
-          <span style={{ ...styles.cardIcone, color: tarefasHoje.length > 0 ? '#F59E0B' : undefined }}>
-            <Icone.Calendar size={22} />
-          </span>
-          <div>
-            <p style={styles.cardNum}>{tarefasHoje.length}</p>
-            <p style={styles.cardLabel}>Para hoje</p>
-          </div>
-        </div>
-        <div style={styles.card}>
-          <span style={{ ...styles.cardIcone, color: 'var(--verde)' }}><Icone.CheckCircle size={22} /></span>
-          <div>
-            <p style={styles.cardNum}>{concluidas.length}</p>
-            <p style={styles.cardLabel}>Concluídas</p>
-          </div>
-        </div>
+        ))}
       </div>
 
-      <div style={styles.gridDois}>
-        <div style={styles.secaoCard}>
-          <div style={styles.secaoCardTopo}>
-            <h2 style={styles.secaoTitulo}>Minhas tarefas de hoje</h2>
-            <button style={styles.btnVer} onClick={() => setPagina('tarefas')}>Ver todas</button>
+      {/* Grade inferior */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '16px' }}>
+
+        {/* Tarefas de hoje */}
+        <div style={{ background: 'var(--card)', border: '1px solid var(--borda)', borderRadius: '14px', padding: '24px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
+          <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
+            <div>
+              <p style={{ fontSize: '0.85rem', fontWeight: '600', color: 'var(--texto)', letterSpacing: '-0.01em', marginBottom: '2px' }}>Tarefas de hoje</p>
+              <p style={{ fontSize: '0.72rem', color: 'var(--texto-apagado)' }}>{tarefasHoje.length} pendente{tarefasHoje.length !== 1 ? 's' : ''}</p>
+            </div>
+            <button style={{ background: 'none', border: 'none', color: 'var(--verde)', fontSize: '0.75rem', fontWeight: '600', cursor: 'pointer', fontFamily: 'Inter, sans-serif' }} onClick={() => setPagina('tarefas-onboarding')}>Ver todas →</button>
           </div>
           {tarefasHoje.length === 0 ? (
-            <div style={styles.vazioCard}>
-              <Icone.CheckCircle size={28} style={{ color: 'var(--borda)' }} />
-              <p>Nenhuma tarefa para hoje!</p>
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px', padding: '24px 0', color: 'var(--texto-apagado)' }}>
+              <div style={{ width: '40px', height: '40px', borderRadius: '10px', background: 'var(--input)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <Icone.CheckCircle size={20} />
+              </div>
+              <p style={{ fontSize: '0.82rem' }}>Nenhuma tarefa para hoje</p>
             </div>
           ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-              {tarefasHoje.slice(0, 5).map(t => (
-                <div key={t._id} style={styles.linhaTarefa}>
-                  <div style={styles.linhaTarefaPonto} />
-                  <div style={{ flex: 1 }}>
-                    <p style={styles.linhaTarefaDesc}>{t.descricao}</p>
-                    {t.hora && <p style={styles.linhaTarefaMeta}>{t.hora}</p>}
-                  </div>
+            <div style={{ display: 'flex', flexDirection: 'column' }}>
+              {tarefasHoje.slice(0, 5).map((t, i) => (
+                <div key={t._id} style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '10px 0', borderBottom: i < Math.min(tarefasHoje.length, 5) - 1 ? '1px solid var(--borda)' : 'none' }}>
+                  <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#fbbf24', flexShrink: 0 }} />
+                  <p style={{ fontSize: '0.85rem', color: 'var(--texto)', margin: 0, flex: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{t.descricao}</p>
+                  {t.hora && <span style={{ fontSize: '0.72rem', color: 'var(--texto-apagado)', flexShrink: 0 }}>{t.hora}</span>}
                 </div>
               ))}
             </div>
           )}
         </div>
 
-        <div style={styles.secaoCard}>
-          <div style={styles.secaoCardTopo}>
-            <h2 style={styles.secaoTitulo}>Mural de avisos</h2>
-            <button style={styles.btnVer} onClick={() => setPagina('mural')}>Ver todos</button>
+        {/* Mural */}
+        <div style={{ background: 'var(--card)', border: '1px solid var(--borda)', borderRadius: '14px', padding: '24px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
+          <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
+            <div>
+              <p style={{ fontSize: '0.85rem', fontWeight: '600', color: 'var(--texto)', letterSpacing: '-0.01em', marginBottom: '2px' }}>Mural de avisos</p>
+              <p style={{ fontSize: '0.72rem', color: 'var(--texto-apagado)' }}>{avisos.length} publicaç{avisos.length !== 1 ? 'ões' : 'ão'} recente{avisos.length !== 1 ? 's' : ''}</p>
+            </div>
+            <button style={{ background: 'none', border: 'none', color: 'var(--verde)', fontSize: '0.75rem', fontWeight: '600', cursor: 'pointer', fontFamily: 'Inter, sans-serif' }} onClick={() => setPagina('mural')}>Ver todos →</button>
           </div>
           {avisos.length === 0 ? (
-            <div style={styles.vazioCard}>
-              <Icone.Bell size={28} style={{ color: 'var(--borda)' }} />
-              <p>Nenhum aviso publicado</p>
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px', padding: '24px 0', color: 'var(--texto-apagado)' }}>
+              <div style={{ width: '40px', height: '40px', borderRadius: '10px', background: 'var(--input)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <Icone.Bell size={20} />
+              </div>
+              <p style={{ fontSize: '0.82rem' }}>Nenhum aviso publicado</p>
             </div>
           ) : (
-            avisos.map(a => (
-              <div key={a._id} style={styles.linhaAviso}>
-                {a.fixado && <span style={styles.badgeFixado}>Fixado</span>}
-                <p style={styles.linhaAvisoTitulo}>{a.titulo}</p>
-                <p style={styles.linhaAvisoTexto}>{a.texto.slice(0, 100)}{a.texto.length > 100 ? '...' : ''}</p>
-                <p style={styles.linhaAvisoMeta}>{new Date(a.criadoEm).toLocaleDateString('pt-BR')}</p>
-              </div>
-            ))
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              {avisos.map(a => (
+                <div key={a._id} style={{ background: 'var(--input)', borderRadius: '10px', padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: '3px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '3px' }}>
+                    {a.fixado && <span style={{ fontSize: '0.6rem', fontWeight: '700', color: 'var(--verde)', background: 'var(--verde-glow)', border: '1px solid rgba(0,177,65,0.2)', borderRadius: '5px', padding: '2px 6px' }}>Fixado</span>}
+                    <p style={{ fontSize: '0.85rem', fontWeight: '600', color: 'var(--texto)', margin: 0 }}>{a.titulo}</p>
+                  </div>
+                  <p style={{ fontSize: '0.78rem', color: 'var(--texto-apagado)', margin: 0, lineHeight: '1.45' }}>{a.texto.slice(0, 90)}{a.texto.length > 90 ? '...' : ''}</p>
+                  <p style={{ fontSize: '0.68rem', color: 'var(--texto-apagado)', margin: '4px 0 0', opacity: 0.7 }}>{new Date(a.criadoEm).toLocaleDateString('pt-BR')}</p>
+                </div>
+              ))}
+            </div>
           )}
         </div>
+
       </div>
     </div>
   )
@@ -606,26 +659,16 @@ export default function DashboardFuncionario() {
   useEffect(() => { carregarDados() }, [])
 
   // Sidebar dinâmico baseado nas permissões do colaborador
+  // Verifica se tem algum item na seção Escritório pra mostrar o separador
+  const temEscritorio = temPermissao('gerenciarEquipe') || temPermissao('gerenciarOnboarding') || temPermissao('gerenciarClientes')
+
   const menuItens = [
     { id: 'inicio', label: 'Início', icone: <Icone.Home size={16} /> },
-    { id: 'tarefas', label: 'Minhas Tarefas', icone: <Icone.ClipboardList size={16} /> },
 
-    // Onboarding — só se tiver permissão
-    ...(temPermissao('gerenciarOnboarding') ? [{
-      id: 'onboarding', label: 'Onboarding', icone: <Icone.ClipboardList size={16} />,
-      subItens: [
-        { id: 'implantacao', label: 'Implantação' },
-        { id: 'modelos', label: 'Modelos' },
-        { id: 'checklist', label: 'Checklist' },
-      ]
-    }] : []),
+    // Separador Escritório — só aparece se tiver alguma permissão
+    ...(temEscritorio ? [{ id: '__sep_escritorio', separador: true, label: 'Escritório' }] : []),
 
-    // Clientes — só se tiver permissão
-    ...(temPermissao('gerenciarClientes') ? [
-      { id: 'clientes', label: 'Clientes', icone: <Icone.Users size={16} /> }
-    ] : []),
-
-    // Equipe — só se tiver permissão
+    // Gestão — só se tiver permissão
     ...(temPermissao('gerenciarEquipe') ? [{
       id: 'gestao', label: 'Gestão', icone: <Icone.UsersThree size={16} />,
       subItens: [
@@ -633,24 +676,54 @@ export default function DashboardFuncionario() {
       ]
     }] : []),
 
-    { id: 'anotacoes', label: 'Anotações', icone: <Icone.Edit size={16} /> },
+    // Onboarding — baseado nas subpermissões
+    ...(temPermissao('gerenciarOnboarding') ? [{
+      id: 'onboarding', label: 'Onboarding', icone: <Icone.ClipboardList size={16} />,
+      subItens: [
+        // Implantação: visível se tiver permissão de criar implantações ou gerenciarOnboarding geral
+        ...(temPermissao('criarImplantacoes') || (!temPermissao('criarImplantacoes') && !temPermissao('gerenciarModelos') && !temPermissao('gerenciarBancoAtividades')) ? [{ id: 'implantacao', label: 'Implantação' }] : []),
+        // Modelos: só se tiver permissão específica
+        ...(temPermissao('gerenciarModelos') ? [{ id: 'modelos', label: 'Modelos' }] : []),
+        // Banco de atividades: só se tiver permissão específica
+        ...(temPermissao('gerenciarBancoAtividades') ? [{ id: 'checklist', label: 'Banco de atividades' }] : []),
+      ].filter(Boolean)
+    }] : []),
 
-    // Relatórios — só se tiver permissão
-    ...(temPermissao('verRelatorios') ? [
-      { id: 'relatorios', label: 'Relatórios', icone: <Icone.BarChart size={16} /> }
+    // Clientes — só se tiver permissão
+    ...(temPermissao('gerenciarClientes') ? [
+      { id: 'clientes', label: 'Clientes', icone: <Icone.Users size={16} /> }
     ] : []),
 
+    // Separador Pessoal — sempre visível
+    { id: '__sep_pessoal', separador: true, label: 'Pessoal' },
+
+    {
+      id: 'tarefas', label: 'Tarefas', icone: <Icone.ClipboardList size={16} />,
+      subItens: [
+        { id: 'tarefas-onboarding', label: 'Onboarding' },
+        { id: 'tarefas-minhas',     label: 'Minhas tarefas' },
+      ]
+    },
+    { id: 'anotacoes', label: 'Anotações', icone: <Icone.Edit size={16} /> },
     { id: 'mural', label: 'Mural', icone: <Icone.Bell size={16} /> },
+
+    // Separador Análise — só se tiver permissão de relatórios
+    ...(temPermissao('verRelatorios') ? [
+      { id: '__sep_analise', separador: true, label: 'Análise' },
+      { id: 'relatorios', label: 'Relatórios', icone: <Icone.BarChart size={16} /> }
+    ] : []),
   ]
 
   return (
     <Layout menuItens={menuItens} paginaAtual={pagina} setPagina={setPagina}>
       {pagina === 'inicio' && <PaginaInicio usuario={usuario} tarefas={tarefas} setPagina={setPagina} />}
-      {pagina === 'tarefas' && <PaginaMinhasTarefas tarefas={tarefas} recarregar={carregarDados} />}
+      {pagina === 'tarefas' && <PaginaMinhasTarefas tarefas={tarefas} recarregar={carregarDados} modo="onboarding" />}
+      {pagina === 'tarefas-onboarding' && <PaginaMinhasTarefas tarefas={tarefas} recarregar={carregarDados} modo="onboarding" />}
+      {pagina === 'tarefas-minhas' && <PaginaMinhasTarefas tarefas={tarefas} recarregar={carregarDados} modo="minhas" />}
       {pagina === 'agenda' && <Agenda cargo="funcionario" usuarioAtualId={usuario?.id} />}
       {pagina === 'implantacao' && <Implantacao />}
       {pagina === 'modelos' && <ModelosOnboarding />}
-      {pagina === 'checklist' && <Checklist />}
+      {pagina === 'checklist' && <BancoAtividades />}
       {pagina === 'clientes' && <Clientes />}
       {pagina === 'equipe' && <PaginaEquipeColaborador />}
       {pagina === 'onboarding' && <Implantacao />}

@@ -1,6 +1,57 @@
 import { useState, useEffect, useRef } from 'react'
+import { createPortal } from 'react-dom'
 import api from '../services/api'
 import { useToast } from './Toast'
+
+
+// ── Balão de tour (inline) ──
+function Balao({ alvo, titulo, texto, passo, total, onProximo, onFechar, posicao = 'bottom' }) {
+  const [coords, setCoords] = useState(null)
+  useEffect(() => {
+    if (!alvo?.current) return
+    const atualizar = () => { const r = alvo.current?.getBoundingClientRect(); if (r) setCoords({ ...r.toJSON() }) }
+    atualizar()
+    const timer = setInterval(atualizar, 100)
+    window.addEventListener('resize', atualizar)
+    return () => { clearInterval(timer); window.removeEventListener('resize', atualizar) }
+  }, [alvo])
+  if (!coords) return null
+  const GAP = 14
+  let top, left, arrowStyle
+  if (posicao === 'bottom') { top = coords.bottom + GAP; left = coords.left + coords.width / 2 - 160; arrowStyle = { top: -8, left: '50%', transform: 'translateX(-50%)', borderBottom: '8px solid #1c1c1f', borderLeft: '8px solid transparent', borderRight: '8px solid transparent' } }
+  else if (posicao === 'top') { top = coords.top - GAP - 170; left = coords.left + coords.width / 2 - 160; arrowStyle = { bottom: -8, left: '50%', transform: 'translateX(-50%)', borderTop: '8px solid #1c1c1f', borderLeft: '8px solid transparent', borderRight: '8px solid transparent' } }
+  else if (posicao === 'right') { top = coords.top + coords.height / 2 - 70; left = coords.right + GAP; arrowStyle = { top: '40%', left: -8, borderRight: '8px solid #1c1c1f', borderTop: '8px solid transparent', borderBottom: '8px solid transparent' } }
+  else { top = coords.top + coords.height / 2 - 70; left = coords.left - 334 - GAP; arrowStyle = { top: '40%', right: -8, borderLeft: '8px solid #1c1c1f', borderTop: '8px solid transparent', borderBottom: '8px solid transparent' } }
+  left = Math.max(12, Math.min(left, window.innerWidth - 340))
+  top = Math.max(12, Math.min(top, window.innerHeight - 200))
+  return createPortal(<>
+    <style>{`@keyframes zp { 0%,100%{box-shadow:0 0 0 3px rgba(0,177,65,0.3),0 0 20px rgba(0,177,65,0.15)} 50%{box-shadow:0 0 0 5px rgba(0,177,65,0.5),0 0 30px rgba(0,177,65,0.3)} }`}</style>
+    <div style={{ position:'fixed', inset:0, zIndex:9990, pointerEvents:'none' }}>
+      <svg style={{ position:'absolute', inset:0, width:'100%', height:'100%' }}>
+        <defs><mask id={`spot-m-${passo}`}><rect width="100%" height="100%" fill="white"/><rect x={coords.left-8} y={coords.top-8} width={coords.width+16} height={coords.height+16} rx="10" fill="black"/></mask></defs>
+        <rect width="100%" height="100%" fill="rgba(0,0,0,0.78)" mask={`url(#spot-m-${passo})`}/>
+        <rect x={coords.left-8} y={coords.top-8} width={coords.width+16} height={coords.height+16} rx="10" fill="none" stroke="rgba(0,177,65,0.8)" strokeWidth="2"/>
+      </svg>
+      <div style={{ position:'absolute', left:coords.left-8, top:coords.top-8, width:coords.width+16, height:coords.height+16, borderRadius:'10px', animation:'zp 2s ease-in-out infinite' }}/>
+    </div>
+    <div style={{ position:'fixed', top, left, width:'320px', background:'#1c1c1f', border:'1px solid rgba(0,177,65,0.35)', borderRadius:'14px', padding:'18px 20px', boxShadow:'0 12px 40px rgba(0,0,0,0.6)', zIndex:9999, fontFamily:'Inter, sans-serif' }}>
+      <div style={{ position:'absolute', width:0, height:0, ...arrowStyle }}/>
+      <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:'10px' }}>
+        <div style={{ display:'flex', alignItems:'center', gap:'8px' }}>
+          <span style={{ fontSize:'14px' }}>💡</span>
+          <span style={{ fontSize:'0.7rem', fontWeight:'700', color:'var(--verde)', textTransform:'uppercase', letterSpacing:'1px' }}>Passo {passo+1} de {total}</span>
+        </div>
+        <button onClick={onFechar} style={{ background:'none', border:'none', color:'rgba(255,255,255,0.3)', cursor:'pointer', fontSize:'14px', padding:'2px 6px', lineHeight:1 }}>✕</button>
+      </div>
+      <p style={{ fontSize:'0.9rem', fontWeight:'600', color:'#fff', margin:'0 0 6px', letterSpacing:'-0.01em' }}>{titulo}</p>
+      <p style={{ fontSize:'0.82rem', color:'rgba(255,255,255,0.55)', margin:0, lineHeight:'1.5' }}>{texto}</p>
+      <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginTop:'16px' }}>
+        <div style={{ display:'flex', gap:'5px' }}>{Array.from({length:total}).map((_,i)=><div key={i} style={{ width:i===passo?'16px':'6px', height:'6px', borderRadius:'99px', background:i===passo?'var(--verde)':'rgba(255,255,255,0.15)', transition:'all 0.2s' }}/>)}</div>
+        <button onClick={onProximo} style={{ background:'var(--gradiente-verde)', color:'#fff', border:'none', borderRadius:'8px', padding:'7px 16px', fontSize:'0.82rem', fontWeight:'600', cursor:'pointer', fontFamily:'Inter, sans-serif' }}>{passo===total-1?'Concluir ✓':'Próximo →'}</button>
+      </div>
+    </div>
+  </>, document.body)
+}
 
 // ── Drag and drop pra ordenar setores ──
 function ListaOrdenavel({ itens, onChange }) {
@@ -41,7 +92,7 @@ function ListaOrdenavel({ itens, onChange }) {
 }
 
 // ── Modal criar novo modelo (só nome + setores) ──
-function ModalNovoModelo({ fechar, onSalvo }) {
+function ModalNovoModelo({ fechar, onSalvo, refNome, refSetores, refOrdem }) {
   const [nome, setNome] = useState('')
   const [descricao, setDescricao] = useState('')
   const [setoresDisponiveis, setSetoresDisponiveis] = useState([])
@@ -87,7 +138,7 @@ function ModalNovoModelo({ fechar, onSalvo }) {
         </div>
         <div style={s.modalCorpo}>
           {erro && <p style={s.erro}>{erro}</p>}
-          <div style={s.campo}>
+          <div style={s.campo} ref={refNome}>
             <label style={s.label}>Nome do modelo</label>
             <input style={s.input} value={nome} onChange={e => setNome(e.target.value)}
               placeholder="Ex: Simples Nacional + Comércio" autoFocus
@@ -98,7 +149,7 @@ function ModalNovoModelo({ fechar, onSalvo }) {
             <input style={s.input} value={descricao} onChange={e => setDescricao(e.target.value)}
               placeholder="Breve descrição do modelo" />
           </div>
-          <div style={s.campo}>
+          <div style={s.campo} ref={refSetores}>
             <label style={s.label}>Setores participantes</label>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
               {setoresDisponiveis.map(setor => {
@@ -121,7 +172,7 @@ function ModalNovoModelo({ fechar, onSalvo }) {
             </div>
           </div>
           {setoresSelecionados.length > 1 && (
-            <div style={s.campo}>
+            <div style={s.campo} ref={refOrdem}>
               <label style={s.label}>Ordem do fluxo</label>
               <ListaOrdenavel itens={setoresSelecionados} onChange={setSetoresSelecionados} />
             </div>
@@ -458,6 +509,39 @@ export default function ModelosOnboarding() {
   const [modeloDetalhe, setModeloDetalhe] = useState(null)
   const { mostrar: toast } = useToast()
 
+  // ── Tour ──
+  const [tourAtivo, setTourAtivo] = useState(false)
+  const [tourPasso, setTourPasso] = useState(0)
+  const refBtnNovo = useRef(null)
+  const refNome = useRef(null)
+  const refSetores = useRef(null)
+  const refOrdem = useRef(null)
+
+  const passosTour = [
+    { ref: refBtnNovo, titulo: 'Crie seu primeiro modelo', texto: 'Um modelo é um template reutilizável. Clique aqui para criar um modelo para cada tipo de empresa (ex: "Simples Nacional + Comércio").', posicao: 'bottom' },
+    { ref: refNome, titulo: 'Dê um nome ao modelo', texto: 'Use um nome que identifique claramente o tipo de empresa. Ex: "Lucro Presumido", "MEI + Serviço", "Empresa que abrimos".', posicao: 'bottom' },
+    { ref: refSetores, titulo: 'Selecione os setores', texto: 'Escolha quais setores participam deste onboarding. Cada setor vai ter suas próprias atividades no fluxo.', posicao: 'bottom' },
+    { ref: refOrdem, titulo: 'Defina a ordem do fluxo', texto: 'Arraste para reordenar. A ordem define a sequência — o setor 1 começa primeiro, o 2 só é liberado quando o 1 terminar, e assim por diante.', posicao: 'top' },
+  ]
+
+  const iniciarTourModelos = () => setTourAtivo(true)
+
+  const fecharTour = () => setTourAtivo(false)
+
+  const proximoTour = () => {
+    setTourPasso(p => {
+      if (p === 0) {
+        setModalNovo(true)
+        return 1
+      }
+      if (p >= passosTour.length - 1) {
+        setTourAtivo(false)
+        return 0
+      }
+      return p + 1
+    })
+  }
+
   const buscar = async () => {
     setCarregando(true)
     try {
@@ -477,6 +561,8 @@ export default function ModelosOnboarding() {
       buscar()
     } catch { toast('Erro ao remover.', 'erro') }
   }
+
+  const passoAtual = tourAtivo ? passosTour[tourPasso] : null
 
   // Se estiver vendo detalhe de um modelo
   if (modeloDetalhe) {
@@ -498,8 +584,27 @@ export default function ModelosOnboarding() {
           <h1 style={s.titulo}>Modelos de onboarding</h1>
           <p style={s.subtitulo}>Templates reutilizáveis para cada tipo de cliente</p>
         </div>
-        <button style={s.btnNovo} onClick={() => setModalNovo(true)}>+ Novo modelo</button>
+        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+          <button style={{ background: 'none', border: '1px solid var(--borda)', borderRadius: '10px', padding: '10px 16px', fontFamily: 'Inter, sans-serif', fontWeight: '500', fontSize: '0.82rem', cursor: 'pointer', color: 'var(--texto-apagado)', whiteSpace: 'nowrap' }} onClick={iniciarTourModelos}>
+            💡 Tutorial
+          </button>
+          <button ref={refBtnNovo} style={s.btnNovo} onClick={() => { fecharTour(); setModalNovo(true) }}>+ Novo modelo</button>
+        </div>
       </div>
+
+      {/* Tour */}
+      {passoAtual && (
+        <Balao
+          alvo={passoAtual.ref}
+          titulo={passoAtual.titulo}
+          texto={passoAtual.texto}
+          passo={tourPasso}
+          total={passosTour.length}
+          onProximo={proximoTour}
+          onFechar={fecharTour}
+          posicao={passoAtual.posicao}
+        />
+      )}
 
       {carregando ? (
         <p style={{ color: 'var(--texto-apagado)', textAlign: 'center', marginTop: '40px' }}>Carregando...</p>
@@ -556,14 +661,16 @@ export default function ModelosOnboarding() {
       {modalNovo && (
         <ModalNovoModelo
           fechar={() => setModalNovo(false)}
+          refNome={refNome}
+          refSetores={refSetores}
+          refOrdem={refOrdem}
           onSalvo={async (novoModelo) => { 
-          await buscar()
-          // Buscar modelo completo antes de abrir detalhe
-          try {
-            const res = await api.get('/modelos-onboarding/' + novoModelo._id)
-            setModeloDetalhe(res.data)
-          } catch { setModeloDetalhe(novoModelo) }
-        }}
+            await buscar()
+            try {
+              const res = await api.get('/modelos-onboarding/' + novoModelo._id)
+              setModeloDetalhe(res.data)
+            } catch { setModeloDetalhe(novoModelo) }
+          }}
         />
       )}
     </div>

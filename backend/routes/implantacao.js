@@ -1,4 +1,5 @@
 const express = require('express');
+const registrarLog = require('../services/log');
 const { autenticar } = require('../middleware/auth');
 const ImplantacaoModel = require('../models/Implantacao');
 const ModeloOnboarding = require('../models/ModeloOnboarding');
@@ -39,6 +40,17 @@ router.get('/por-tarefa/:tarefaId', autenticar, async (req, res) => {
     .populate('criadoPor', 'nome')
     .populate('modelo', 'nome');
     if (!implantacao) return res.status(404).json({ erro: 'Implantação não encontrada.' });
+    // Buscar observacoes da tarefa específica
+    let observacoesTarefa = '';
+    for (const etapa of implantacao.etapas) {
+      const tf = etapa.tarefas.find(t => t.tarefa?.toString() === req.params.tarefaId);
+      if (tf) {
+        const tarefaDoc = await Tarefa.findById(req.params.tarefaId).select('observacoes');
+        observacoesTarefa = tarefaDoc?.observacoes || '';
+        break;
+      }
+    }
+
     res.json({
       _id: implantacao._id,
       nomeCliente: implantacao.nomeCliente,
@@ -48,6 +60,7 @@ router.get('/por-tarefa/:tarefaId', autenticar, async (req, res) => {
       criadoPor: implantacao.criadoPor?.nome || '',
       criadoEm: implantacao.criadoEm,
       status: implantacao.status,
+      observacoes: observacoesTarefa,
     });
   } catch (err) {
     res.status(500).json({ erro: 'Erro ao buscar implantação.' });
@@ -102,6 +115,7 @@ router.post('/', autenticar, async (req, res) => {
           atividades.map(ativ =>
             Tarefa.create({
               descricao: ativ.descricao,
+              observacoes: ativ.observacoes || '',
               setor: s.setor,
               responsavel: ativ.responsavel || responsavelId,
               criadaPor: req.usuario._id,
@@ -133,6 +147,7 @@ router.post('/', autenticar, async (req, res) => {
 
     const populada = await populateImplantacao(ImplantacaoModel.findById(implantacao._id));
     res.status(201).json(populada);
+    registrarLog({ empresa: req.usuario.empresa._id, usuario: req.usuario._id, tipo: 'implantacao_criada', descricao: `Criou a implantação de ${nomeCliente.trim()}`, meta: { nomeCliente } });
 
     // Dispara e-mails em background (não bloqueia a resposta)
     setImmediate(async () => {
@@ -291,7 +306,8 @@ router.delete('/:id', autenticar, async (req, res) => {
       await Tarefa.deleteMany({ _id: { $in: tarefaIds } });
     }
 
-    await ImplantacaoModel.findByIdAndDelete(req.params.id);
+    const impDel = await ImplantacaoModel.findByIdAndDelete(req.params.id);
+    if (impDel) registrarLog({ empresa: req.usuario.empresa._id, usuario: req.usuario._id, tipo: 'implantacao_excluida', descricao: `Excluiu a implantação de ${impDel.nomeCliente}`, meta: { nomeCliente: impDel.nomeCliente } });
     res.json({ mensagem: 'Implantação excluída com sucesso.' });
   } catch (err) {
     console.error(err);

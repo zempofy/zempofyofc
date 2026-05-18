@@ -5,6 +5,7 @@ const tarefaSchema = new mongoose.Schema({
   data: { type: String },
   hora: { type: String },
   local: { type: String, default: '' },
+  observacoes: { type: String, default: '' },
   cor: { type: String, default: '#2DAA59' },
   etiquetas: [{ type: String }],
   prioridade: { type: String, enum: ['alta', 'media', 'baixa', ''], default: '' },

@@ -1,4 +1,5 @@
 const express = require('express');
+const registrarLog = require('../services/log');
 const { autenticar } = require('../middleware/auth');
 const Cliente = require('../models/Cliente');
 
@@ -36,6 +37,7 @@ router.post('/', autenticar, async (req, res) => {
       empresa: req.usuario.empresa._id,
       criadoPor: req.usuario._id,
     });
+    registrarLog({ empresa: req.usuario.empresa._id, usuario: req.usuario._id, tipo: 'cliente_criado', descricao: 'Cadastrou o cliente ' + (nome || ''), meta: { nome } });
     res.status(201).json(cliente);
   } catch (err) {
     res.status(500).json({ erro: 'Erro ao criar cliente.' });
@@ -62,6 +64,7 @@ router.put('/:id', autenticar, async (req, res) => {
 router.delete('/:id', autenticar, async (req, res) => {
   try {
     await Cliente.findOneAndDelete({ _id: req.params.id, empresa: req.usuario.empresa._id });
+    registrarLog({ empresa: req.usuario.empresa._id, usuario: req.usuario._id, tipo: 'cliente_excluido', descricao: 'Removeu um cliente' });
     res.json({ mensagem: 'Cliente removido.' });
   } catch (err) {
     res.status(500).json({ erro: 'Erro ao remover cliente.' });

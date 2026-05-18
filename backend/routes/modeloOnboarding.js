@@ -1,4 +1,5 @@
 const express = require('express');
+const registrarLog = require('../services/log');
 const { autenticar, apenasAdmin } = require('../middleware/auth');
 const ModeloOnboarding = require('../models/ModeloOnboarding');
 
@@ -47,6 +48,7 @@ router.post('/', autenticar, apenasAdmin, async (req, res) => {
       criadoPor: req.usuario._id
     });
     const populado = await populateModelo(ModeloOnboarding.findById(modelo._id));
+    registrarLog({ empresa: req.usuario.empresa._id, usuario: req.usuario._id, tipo: 'modelo_criado', descricao: 'Criou o modelo ' + nome, meta: { nome } });
     res.status(201).json(populado);
   } catch (err) {
     res.status(500).json({ erro: 'Erro ao criar modelo.' });
@@ -78,6 +80,7 @@ router.delete('/:id', autenticar, apenasAdmin, async (req, res) => {
       { _id: req.params.id, empresa: req.usuario.empresa._id },
       { ativo: false }
     );
+    registrarLog({ empresa: req.usuario.empresa._id, usuario: req.usuario._id, tipo: 'modelo_excluido', descricao: 'Excluiu um modelo' });
     res.json({ mensagem: 'Modelo removido.' });
   } catch (err) {
     res.status(500).json({ erro: 'Erro ao remover modelo.' });

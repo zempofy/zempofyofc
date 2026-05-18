@@ -1,4 +1,5 @@
 const express = require('express');
+const registrarLog = require('../services/log');
 const { autenticar, apenasAdmin } = require('../middleware/auth');
 const { enviarVerificacaoEmail } = require('../services/email');
 const crypto = require('crypto');
@@ -80,6 +81,7 @@ router.post('/', autenticar, apenasAdmin, async (req, res) => {
     });
     // Envia e-mail de verificação pro colaborador
     setImmediate(() => enviarVerificacaoEmail({ destinatario: email, nome, token: tokenVerif }));
+    registrarLog({ empresa: req.usuario.empresa._id, usuario: req.usuario._id, tipo: 'membro_adicionado', descricao: 'Adicionou ' + nome + ' à equipe', meta: { nome, email } });
     res.status(201).json({ id: usuario._id, nome: usuario.nome, email: usuario.email, cargo: usuario.cargo, permissoes: usuario.permissoes });
   } catch (err) {
     res.status(500).json({ erro: 'Erro ao criar usuário.' });

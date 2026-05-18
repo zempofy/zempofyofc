@@ -27,6 +27,188 @@ function saudacao(nome) {
   return `${parte}, ${nome.split(' ')[0]}!`
 }
 
+// ── Guia de Primeiros Passos ──
+function GuiaPrimeirosPassos({ setPagina, empresaId }) {
+  const [passos, setPassos] = useState(null)
+  const [dispensado, setDispensado] = useState(() => {
+    return localStorage.getItem(`zempofy_guia_dispensado_${empresaId}`) === 'true'
+  })
+
+  useEffect(() => {
+    if (dispensado) return
+    const verificar = async () => {
+      try {
+        const [resSetores, resAtividades, resModelos, resImplantacoes] = await Promise.all([
+          api.get('/setores'),
+          api.get('/checklist'),
+          api.get('/modelos-onboarding'),
+          api.get('/implantacoes'),
+        ])
+        const novosPassos = [
+          {
+            id: 'setores',
+            label: 'Configurar setores',
+            desc: 'Defina os setores do seu escritório',
+            feito: resSetores.data.length > 0,
+            pagina: 'setores',
+          },
+          {
+            id: 'atividades',
+            label: 'Criar atividades no banco',
+            desc: 'Cadastre as atividades padrão por setor',
+            feito: resAtividades.data.length > 0,
+            pagina: 'checklist',
+          },
+          {
+            id: 'modelos',
+            label: 'Montar um modelo de onboarding',
+            desc: 'Crie templates para cada tipo de cliente',
+            feito: resModelos.data.length > 0,
+            pagina: 'modelos',
+          },
+          {
+            id: 'implantacao',
+            label: 'Criar a primeira implantação',
+            desc: 'Inicie o onboarding de um cliente',
+            feito: resImplantacoes.data.length > 0,
+            pagina: 'implantacao',
+          },
+        ]
+        setPassos(novosPassos)
+      } catch {}
+    }
+    verificar()
+  }, [dispensado])
+
+  const dispensar = () => {
+    localStorage.setItem(`zempofy_guia_dispensado_${empresaId}`, 'true')
+    setDispensado(true)
+  }
+
+  // Não mostra se dispensado ou ainda carregando
+  if (dispensado || !passos) return null
+
+  const feitos = passos.filter(p => p.feito).length
+  const total = passos.length
+
+  // Some automaticamente quando tudo estiver feito
+  if (feitos === total) return null
+
+  const progresso = Math.round((feitos / total) * 100)
+
+  return (
+    <div style={stylesGuia.card}>
+      <div style={stylesGuia.topo}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flex: 1, minWidth: 0 }}>
+          <div style={stylesGuia.iconeRocket}>🚀</div>
+          <div style={{ minWidth: 0 }}>
+            <p style={stylesGuia.titulo}>Configure seu escritório</p>
+            <p style={stylesGuia.sub}>{feitos} de {total} etapas concluídas</p>
+          </div>
+          <div style={stylesGuia.progressoTrack}>
+            <div style={{ ...stylesGuia.progressoBar, width: `${progresso}%` }} />
+          </div>
+          <span style={stylesGuia.progressoPct}>{progresso}%</span>
+        </div>
+        <button style={stylesGuia.btnDispensar} onClick={dispensar} title="Dispensar guia">✕</button>
+      </div>
+
+      <div style={stylesGuia.passos}>
+        {passos.map((p, i) => (
+          <button
+            key={p.id}
+            style={{ ...stylesGuia.passo, ...(p.feito ? stylesGuia.passoFeito : stylesGuia.passoPendente) }}
+            onClick={() => !p.feito && setPagina(p.pagina)}
+            disabled={p.feito}
+          >
+            <div style={{ ...stylesGuia.check, ...(p.feito ? stylesGuia.checkFeito : {}) }}>
+              {p.feito ? '✓' : i + 1}
+            </div>
+            <div style={{ flex: 1, minWidth: 0, textAlign: 'left' }}>
+              <p style={{ ...stylesGuia.passoLabel, color: p.feito ? 'var(--texto-apagado)' : 'var(--texto)', textDecoration: p.feito ? 'line-through' : 'none' }}>
+                {p.label}
+              </p>
+              <p style={stylesGuia.passoDesc}>{p.desc}</p>
+            </div>
+            {!p.feito && <span style={stylesGuia.seta}>→</span>}
+          </button>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+const stylesGuia = {
+  card: {
+    background: 'linear-gradient(135deg, rgba(0,177,65,0.06), rgba(0,177,65,0.02))',
+    border: '1px solid rgba(0,177,65,0.2)',
+    borderRadius: '16px',
+    padding: '20px 24px',
+    marginBottom: '8px',
+  },
+  topo: {
+    display: 'flex', alignItems: 'center', gap: '12px',
+    marginBottom: '16px',
+    flexWrap: 'wrap',
+  },
+  iconeRocket: { fontSize: '20px', flexShrink: 0 },
+  titulo: { fontSize: '0.9rem', fontWeight: '700', color: 'var(--texto)', margin: 0, letterSpacing: '-0.01em' },
+  sub: { fontSize: '0.75rem', color: 'var(--texto-apagado)', margin: '2px 0 0' },
+  progressoTrack: {
+    flex: 1, minWidth: '80px', maxWidth: '200px',
+    height: '4px', borderRadius: '99px',
+    background: 'rgba(0,177,65,0.15)',
+    overflow: 'hidden',
+  },
+  progressoBar: {
+    height: '100%', borderRadius: '99px',
+    background: 'var(--gradiente-verde)',
+    transition: 'width 0.4s ease',
+  },
+  progressoPct: { fontSize: '0.72rem', color: 'var(--verde)', fontWeight: '700', flexShrink: 0 },
+  btnDispensar: {
+    background: 'none', border: '1px solid rgba(255,255,255,0.1)',
+    borderRadius: '6px', color: 'rgba(255,255,255,0.3)',
+    width: '26px', height: '26px', fontSize: '11px',
+    cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+    flexShrink: 0,
+  },
+  passos: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+    gap: '8px',
+  },
+  passo: {
+    display: 'flex', alignItems: 'center', gap: '10px',
+    padding: '10px 14px', borderRadius: '10px',
+    border: '1px solid transparent',
+    fontFamily: 'Inter, sans-serif',
+    cursor: 'pointer', transition: 'all 0.15s',
+    background: 'none',
+  },
+  passoFeito: {
+    background: 'rgba(0,177,65,0.04)',
+    border: '1px solid rgba(0,177,65,0.1)',
+    cursor: 'default',
+  },
+  passoPendente: {
+    background: 'var(--input)',
+    border: '1px solid var(--borda)',
+  },
+  check: {
+    width: '24px', height: '24px', borderRadius: '50%', flexShrink: 0,
+    border: '1.5px solid var(--borda)',
+    display: 'flex', alignItems: 'center', justifyContent: 'center',
+    fontSize: '0.7rem', fontWeight: '700', color: 'var(--texto-apagado)',
+  },
+  checkFeito: {
+    background: 'var(--verde)', borderColor: 'var(--verde)', color: '#fff',
+  },
+  passoLabel: { fontSize: '0.82rem', fontWeight: '600', margin: 0, letterSpacing: '-0.01em' },
+  passoDesc: { fontSize: '0.72rem', color: 'var(--texto-apagado)', margin: '2px 0 0' },
+  seta: { fontSize: '0.85rem', color: 'var(--verde)', flexShrink: 0 },
+}
+
 function PaginaInicio({ usuario, tarefas, funcionarios, setPagina }) {
   const [avisos, setAvisos] = useState([])
   const hoje = new Date().toISOString().split('T')[0]
@@ -39,6 +221,7 @@ function PaginaInicio({ usuario, tarefas, funcionarios, setPagina }) {
   useEffect(() => {
     api.get('/mural').then(r => setAvisos(r.data.slice(0, 3))).catch(() => {})
   }, [])
+  const empresaId = usuario?.empresa?._id || usuario?.empresa || 'default'
 
   const metricas = [
     {
@@ -74,6 +257,9 @@ function PaginaInicio({ usuario, tarefas, funcionarios, setPagina }) {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '32px' }}>
+
+      {/* ── Guia de primeiros passos ── */}
+      <GuiaPrimeirosPassos setPagina={setPagina} empresaId={empresaId} />
 
       {/* ── Cabeçalho ── */}
       <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between' }}>
@@ -344,45 +530,95 @@ const stylesInicio = {
 }
 
 const PERMISSOES_LABELS = [
-  { key: 'gerenciarEquipe',     label: 'Gerenciar equipe',      desc: 'Adicionar e remover membros' },
-  { key: 'gerenciarOnboarding', label: 'Gerenciar onboarding',  desc: 'Implantações, modelos e checklist' },
-  { key: 'gerenciarClientes',   label: 'Gerenciar clientes',    desc: 'Ver e editar carteira de clientes' },
-  { key: 'verRelatorios',       label: 'Ver relatórios',        desc: 'Métricas e dados da equipe' },
-  { key: 'publicarMural',       label: 'Publicar no mural',     desc: 'Postar avisos para a equipe' },
-  { key: 'criarTarefas',         label: 'Criar tarefas para outros', desc: 'Atribuir tarefas a outros colaboradores' },
+  { key: 'gerenciarEquipe',     label: 'Gerenciar equipe',           desc: 'Adicionar e remover membros' },
+  { key: 'gerenciarOnboarding', label: 'Gerenciar onboarding',       desc: 'Acesso ao módulo de onboarding', subpermissoes: [
+    { key: 'criarImplantacoes',        label: 'Criar e excluir implantações', desc: 'Iniciar e remover onboardings de clientes' },
+    { key: 'gerenciarModelos',         label: 'Criar, editar e excluir modelos', desc: 'Gerenciar templates de onboarding' },
+    { key: 'gerenciarBancoAtividades', label: 'Criar, editar e excluir atividades', desc: 'Gerenciar o banco de atividades' },
+  ]},
+  { key: 'gerenciarClientes',   label: 'Gerenciar clientes',         desc: 'Ver e editar carteira de clientes' },
+  { key: 'verRelatorios',       label: 'Ver relatórios',             desc: 'Métricas e dados da equipe' },
+  { key: 'publicarMural',       label: 'Publicar no mural',          desc: 'Postar avisos para a equipe' },
+  { key: 'criarTarefas',        label: 'Criar tarefas para outros',  desc: 'Atribuir tarefas a outros colaboradores' },
 ]
+
+function CheckItem({ ativo, label, desc, onClick, sub = false }) {
+  return (
+    <div onClick={onClick} style={{
+      display: 'flex', alignItems: 'center', gap: '12px',
+      padding: sub ? '8px 12px 8px 28px' : '10px 12px',
+      borderRadius: '8px', cursor: 'pointer',
+      background: ativo ? 'rgba(0,177,65,0.08)' : sub ? 'rgba(255,255,255,0.02)' : 'transparent',
+      border: ativo ? '1px solid rgba(0,177,65,0.2)' : '1px solid var(--borda)',
+      transition: 'all 0.15s',
+    }}>
+      <div style={{
+        width: '16px', height: '16px', borderRadius: '4px', flexShrink: 0,
+        border: ativo ? '2px solid var(--verde)' : '2px solid #3f3f46',
+        background: ativo ? 'var(--verde)' : 'transparent',
+        display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.15s',
+      }}>
+        {ativo && <svg width="9" height="9" viewBox="0 0 10 10" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round"><polyline points="1.5 5 4 7.5 8.5 2.5"/></svg>}
+      </div>
+      <div style={{ flex: 1 }}>
+        <p style={{ margin: 0, fontSize: sub ? '0.82rem' : '0.875rem', fontWeight: '500', color: sub ? 'var(--texto-apagado)' : 'var(--texto)', fontFamily: 'Inter, sans-serif' }}>{label}</p>
+        <p style={{ margin: 0, fontSize: '0.72rem', color: 'var(--texto-apagado)' }}>{desc}</p>
+      </div>
+    </div>
+  )
+}
 
 function PainelPermissoes({ permissoes, onChange }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '4px' }}>
       {PERMISSOES_LABELS.map(p => (
-        <div
-          key={p.key}
-          onClick={() => onChange({ ...permissoes, [p.key]: !permissoes[p.key] })}
-          style={{
-            display: 'flex', alignItems: 'center', gap: '12px',
-            padding: '10px 12px', borderRadius: '8px', cursor: 'pointer',
-            background: permissoes[p.key] ? 'rgba(0,177,65,0.08)' : 'transparent',
-            border: permissoes[p.key] ? '1px solid rgba(0,177,65,0.2)' : '1px solid var(--borda)',
-            transition: 'all 0.15s',
-          }}
-        >
-          <div style={{
-            width: '16px', height: '16px', borderRadius: '4px', flexShrink: 0,
-            border: permissoes[p.key] ? '2px solid var(--verde)' : '2px solid #3f3f46',
-            background: permissoes[p.key] ? 'var(--verde)' : 'transparent',
-            display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.15s',
-          }}>
-            {permissoes[p.key] && (
-              <svg width="9" height="9" viewBox="0 0 10 10" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round">
-                <polyline points="1.5 5 4 7.5 8.5 2.5"/>
-              </svg>
-            )}
+        <div key={p.key}>
+          <div
+            onClick={() => {
+              const novo = { ...permissoes, [p.key]: !permissoes[p.key] }
+              // Se desativar o pai, desativa também as subpermissões
+              if (permissoes[p.key] && p.subpermissoes) {
+                p.subpermissoes.forEach(s => { novo[s.key] = false })
+              }
+              onChange(novo)
+            }}
+            style={{
+              display: 'flex', alignItems: 'center', gap: '12px',
+              padding: '10px 12px', borderRadius: '8px', cursor: 'pointer',
+              background: permissoes[p.key] ? 'rgba(0,177,65,0.08)' : 'transparent',
+              border: permissoes[p.key] ? '1px solid rgba(0,177,65,0.2)' : '1px solid var(--borda)',
+              transition: 'all 0.15s',
+            }}
+          >
+            <div style={{
+              width: '16px', height: '16px', borderRadius: '4px', flexShrink: 0,
+              border: permissoes[p.key] ? '2px solid var(--verde)' : '2px solid #3f3f46',
+              background: permissoes[p.key] ? 'var(--verde)' : 'transparent',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.15s',
+            }}>
+              {permissoes[p.key] && <svg width="9" height="9" viewBox="0 0 10 10" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round"><polyline points="1.5 5 4 7.5 8.5 2.5"/></svg>}
+            </div>
+            <div style={{ flex: 1 }}>
+              <p style={{ margin: 0, fontSize: '0.875rem', fontWeight: '500', color: 'var(--texto)', fontFamily: 'Inter, sans-serif' }}>{p.label}</p>
+              <p style={{ margin: 0, fontSize: '0.75rem', color: 'var(--texto-apagado)' }}>{p.desc}</p>
+            </div>
           </div>
-          <div style={{ flex: 1 }}>
-            <p style={{ margin: 0, fontSize: '0.875rem', fontWeight: '500', color: 'var(--texto)', fontFamily: 'Inter, sans-serif' }}>{p.label}</p>
-            <p style={{ margin: 0, fontSize: '0.75rem', color: 'var(--texto-apagado)' }}>{p.desc}</p>
-          </div>
+
+          {/* Subpermissões — aparecem quando o pai está ativo */}
+          {p.subpermissoes && permissoes[p.key] && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginTop: '6px', paddingLeft: '8px', borderLeft: '2px solid rgba(0,177,65,0.2)' }}>
+              {p.subpermissoes.map(sub => (
+                <CheckItem
+                  key={sub.key}
+                  ativo={!!permissoes[sub.key]}
+                  label={sub.label}
+                  desc={sub.desc}
+                  sub
+                  onClick={e => { e.stopPropagation(); onChange({ ...permissoes, [sub.key]: !permissoes[sub.key] }) }}
+                />
+              ))}
+            </div>
+          )}
         </div>
       ))}
     </div>
@@ -391,6 +627,7 @@ function PainelPermissoes({ permissoes, onChange }) {
 
 const PERMISSOES_VAZIAS = {
   gerenciarEquipe: false, gerenciarOnboarding: false,
+  criarImplantacoes: false, gerenciarModelos: false, gerenciarBancoAtividades: false,
   gerenciarClientes: false, verRelatorios: false, publicarMural: false, criarTarefas: false,
 }
 
@@ -989,8 +1226,19 @@ function PaginaTarefas({ tarefas, funcionarios, recarregar }) {
     }
   }
 
-  const concluir = async (id) => { await api.patch(`/tarefas/${id}/concluir`); recarregar(); mostrar('Tarefa concluída! ✓') }
-  const desmarcar = async (id) => { await api.patch(`/tarefas/${id}/desmarcar`); recarregar(); mostrar('Tarefa reaberta.') }
+  const [tarefasLocais, setTarefasLocais] = useState(tarefas)
+  useEffect(() => { setTarefasLocais(tarefas) }, [tarefas])
+
+  const concluir = async (id) => {
+    setTarefasLocais(prev => prev.map(t => t._id === id ? { ...t, status: 'concluida' } : t))
+    try { await api.patch(`/tarefas/${id}/concluir`); recarregar(); mostrar('Tarefa concluída! ✓') }
+    catch { setTarefasLocais(tarefas); mostrar('Erro ao concluir.', 'erro') }
+  }
+  const desmarcar = async (id) => {
+    setTarefasLocais(prev => prev.map(t => t._id === id ? { ...t, status: 'pendente' } : t))
+    try { await api.patch(`/tarefas/${id}/desmarcar`); recarregar(); mostrar('Tarefa reaberta.') }
+    catch { setTarefasLocais(tarefas); mostrar('Erro ao reabrir.', 'erro') }
+  }
   const editar = async (id, descricao) => { await api.put(`/tarefas/${id}`, { descricao }); recarregar(); mostrar('Tarefa atualizada.') }
   const excluir = async (id) => { await api.delete(`/tarefas/${id}`); recarregar(); mostrar('Tarefa excluída.', 'aviso') }
   const atualizarEtiquetas = async (id, novas) => { await api.patch(`/tarefas/${id}/etiquetas`, { etiquetas: novas }); recarregar() }
@@ -1174,7 +1422,6 @@ function PaginaTarefas({ tarefas, funcionarios, recarregar }) {
         </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-
           {/* ── ONBOARDING DE CLIENTES ── */}
           <div>
             <SecaoHeader titulo="Onboarding de clientes" count={onbPendentes.length} verde />
@@ -1190,11 +1437,10 @@ function PaginaTarefas({ tarefas, funcionarios, recarregar }) {
               </div>
             )}
           </div>
-
-          {/* ── TAREFAS DA EQUIPE ── */}
+          {/* ── MINHAS TAREFAS ── */}
           <div>
-            <SecaoHeader titulo="Tarefas da equipe" count={normaisPendentes.length} verde={false} />
-            {normaisPendentes.length === 0 && normaisConcluidas.length === 0 && onbConcluidas.length === 0 ? (
+            <SecaoHeader titulo="Minhas tarefas" count={normaisPendentes.length} verde={false} />
+            {normaisPendentes.length === 0 && normaisConcluidas.length === 0 ? (
               <p style={{ color: 'var(--texto-apagado)', fontSize: '0.875rem', padding: '12px 0' }}>Nenhuma tarefa criada ainda.</p>
             ) : (
               <div style={stylesTarefas.tabelaCard}>
@@ -1211,7 +1457,6 @@ function PaginaTarefas({ tarefas, funcionarios, recarregar }) {
               </div>
             )}
           </div>
-
         </div>
       )}
     </div>
@@ -1369,64 +1614,159 @@ const stylesTarefas = {
 // ============ HISTÓRICO DE CONQUISTAS ============
 
 function PaginaHistorico() {
-  const [historico, setHistorico] = useState([])
+  const [logs, setLogs] = useState([])
   const [carregando, setCarregando] = useState(true)
+  const [categoriaFiltro, setCategoriaFiltro] = useState('todos')
 
-  useEffect(() => {
-    api.get('/tarefas/historico/conquistas')
-      .then(r => setHistorico(r.data))
+  const buscar = (cat) => {
+    setCarregando(true)
+    // Onboarding agrupa: implantações, modelos e atividades
+    let query = ''
+    if (cat && cat !== 'todos') {
+      if (cat === 'onboarding') {
+        query = '?categoria=onboarding&categoria=modelo&categoria=atividade'
+      } else {
+        query = `?categoria=${cat}`
+      }
+    }
+    api.get('/logs' + query)
+      .then(r => setLogs(r.data))
       .catch(() => {})
       .finally(() => setCarregando(false))
-  }, [])
+  }
 
-  const porDia = historico.reduce((acc, t) => {
-    const dia = t.concluidaEm ? new Date(t.concluidaEm).toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' }) : 'Sem data'
+  useEffect(() => { buscar('todos') }, [])
+
+  const filtrar = (cat) => {
+    setCategoriaFiltro(cat)
+    buscar(cat)
+  }
+
+  // Agrupar por dia
+  const porDia = logs.reduce((acc, log) => {
+    const dia = new Date(log.criadoEm).toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'long' })
     if (!acc[dia]) acc[dia] = []
-    acc[dia].push(t)
+    acc[dia].push(log)
     return acc
   }, {})
 
+  const iconeLog = (tipo) => {
+    const mapa = {
+      implantacao_criada:          { icone: <Icone.Plus size={14} />,       cor: '#00b141', bg: 'rgba(0,177,65,0.12)' },
+      implantacao_excluida:        { icone: <Icone.Trash size={14} />,      cor: '#f87171', bg: 'rgba(248,113,113,0.12)' },
+      implantacao_etapa_concluida: { icone: <Icone.Check size={14} />,      cor: '#00b141', bg: 'rgba(0,177,65,0.12)' },
+      modelo_criado:               { icone: <Icone.Plus size={14} />,       cor: '#60a5fa', bg: 'rgba(96,165,250,0.12)' },
+      modelo_editado:              { icone: <Icone.Edit size={14} />,       cor: '#60a5fa', bg: 'rgba(96,165,250,0.12)' },
+      modelo_excluido:             { icone: <Icone.Trash size={14} />,      cor: '#f87171', bg: 'rgba(248,113,113,0.12)' },
+      atividade_criada:            { icone: <Icone.Plus size={14} />,       cor: '#60a5fa', bg: 'rgba(96,165,250,0.12)' },
+      atividade_editada:           { icone: <Icone.Edit size={14} />,       cor: '#60a5fa', bg: 'rgba(96,165,250,0.12)' },
+      atividade_excluida:          { icone: <Icone.Trash size={14} />,      cor: '#f87171', bg: 'rgba(248,113,113,0.12)' },
+      cliente_criado:              { icone: <Icone.Plus size={14} />,       cor: '#fbbf24', bg: 'rgba(251,191,36,0.12)' },
+      cliente_editado:             { icone: <Icone.Edit size={14} />,       cor: '#fbbf24', bg: 'rgba(251,191,36,0.12)' },
+      cliente_excluido:            { icone: <Icone.Trash size={14} />,      cor: '#f87171', bg: 'rgba(248,113,113,0.12)' },
+      membro_adicionado:           { icone: <Icone.Users size={14} />,      cor: '#a78bfa', bg: 'rgba(167,139,250,0.12)' },
+      membro_removido:             { icone: <Icone.Users size={14} />,      cor: '#f87171', bg: 'rgba(248,113,113,0.12)' },
+      tarefa_concluida:            { icone: <Icone.CheckCircle size={14} />, cor: '#00b141', bg: 'rgba(0,177,65,0.12)' },
+    }
+    return mapa[tipo] || { icone: <Icone.CheckCircle size={14} />, cor: 'var(--texto-apagado)', bg: 'var(--input)' }
+  }
+
+  const badgeCategoria = (cat) => {
+    const mapa = {
+      onboarding: { label: 'Onboarding', cor: '#00b141', bg: 'rgba(0,177,65,0.1)' },
+      modelo:     { label: 'Modelo',     cor: '#60a5fa', bg: 'rgba(96,165,250,0.1)' },
+      atividade:  { label: 'Atividade',  cor: '#60a5fa', bg: 'rgba(96,165,250,0.1)' },
+      cliente:    { label: 'Cliente',    cor: '#fbbf24', bg: 'rgba(251,191,36,0.1)' },
+      equipe:     { label: 'Equipe',     cor: '#a78bfa', bg: 'rgba(167,139,250,0.1)' },
+      tarefa:     { label: 'Tarefa',     cor: '#00b141', bg: 'rgba(0,177,65,0.1)' },
+    }
+    const c = mapa[cat] || { label: cat, cor: 'var(--texto-apagado)', bg: 'var(--input)' }
+    return (
+      <span style={{ fontSize: '0.65rem', fontWeight: '700', padding: '2px 8px', borderRadius: '5px', background: c.bg, color: c.cor, whiteSpace: 'nowrap' }}>
+        {c.label}
+      </span>
+    )
+  }
+
+  const filtros = [
+    { key: 'todos',      label: 'Todos' },
+    { key: 'onboarding', label: 'Onboarding' },
+    { key: 'cliente',    label: 'Clientes' },
+    { key: 'equipe',     label: 'Equipe' },
+  ]
+
   return (
-    <div>
-      <div style={styles.cabecalho}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px' }}>
         <div>
-          <h1 style={styles.titulo}>Histórico</h1>
-          <p style={styles.subtitulo}>{historico.length} tarefa(s) concluída(s)</p>
+          <h1 style={{ fontSize: '1.5rem', fontWeight: '700', color: 'var(--texto)', margin: 0, letterSpacing: '-0.03em' }}>Histórico</h1>
+          <p style={{ fontSize: '0.82rem', color: 'var(--texto-apagado)', marginTop: '5px' }}>Registro de todas as ações realizadas no sistema</p>
         </div>
       </div>
 
-      {carregando && <p style={{ color: 'var(--texto-apagado)' }}>Carregando...</p>}
+      {/* Filtros */}
+      <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+        {filtros.map(f => (
+          <button key={f.key} onClick={() => filtrar(f.key)} style={{
+            fontSize: '0.8rem', padding: '5px 14px', borderRadius: '99px', cursor: 'pointer',
+            fontFamily: 'Inter, sans-serif', fontWeight: categoriaFiltro === f.key ? '600' : '400',
+            background: categoriaFiltro === f.key ? 'rgba(0,177,65,0.1)' : 'none',
+            border: categoriaFiltro === f.key ? '1px solid rgba(0,177,65,0.3)' : '1px solid var(--borda)',
+            color: categoriaFiltro === f.key ? 'var(--verde)' : 'var(--texto-apagado)',
+            transition: 'all 0.15s',
+          }}>
+            {f.label}
+          </button>
+        ))}
+      </div>
 
-      {!carregando && historico.length === 0 && (
+      {carregando ? (
+        <p style={{ color: 'var(--texto-apagado)' }}>Carregando...</p>
+      ) : logs.length === 0 ? (
         <div style={{ textAlign: 'center', padding: '60px 0', color: 'var(--texto-apagado)' }}>
-          <Icone.CheckCircle size={40} style={{ opacity: 0.3, marginBottom: '12px' }} />
-          <p>Nenhuma tarefa concluída ainda.</p>
+          <p style={{ marginBottom: '8px', fontSize: '0.9rem' }}>Nenhuma ação registrada ainda.</p>
+          <p style={{ fontSize: '0.8rem' }}>As ações aparecerão aqui conforme o sistema for usado.</p>
         </div>
-      )}
-
-      {Object.entries(porDia).map(([dia, tarefas]) => (
-        <div key={dia} style={styles.secao}>
-          <h2 style={styles.secaoTitulo}>{dia} · <span style={{ color: 'var(--verde)' }}>{tarefas.length} concluída(s)</span></h2>
-          {tarefas.map(t => (
-            <div key={t._id} style={{ ...styles.cardTarefa, opacity: 0.85 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                <div style={{ width: '20px', height: '20px', borderRadius: '50%', background: 'var(--verde)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                  <Icone.Check size={11} style={{ color: '#fff' }} />
-                </div>
-                <div style={{ flex: 1 }}>
-                  <p style={{ ...styles.tarefaDesc, textDecoration: 'line-through', opacity: 0.7 }}>{t.descricao}</p>
-                  <p style={{ fontSize: '0.78rem', color: 'var(--texto-apagado)', marginTop: '2px' }}>
-                    {t.responsavel?.nome && `${t.responsavel.nome}`}
-                    {t.concluidaPor?.nome && t.concluidaPor._id !== t.responsavel?._id && ` · Concluída por ${t.concluidaPor.nome}`}
-                    {t.concluidaEm && ` · ${new Date(t.concluidaEm).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`}
-                  </p>
-                </div>
-                {t.prioridade && <BadgePrioridade prioridade={t.prioridade} />}
-              </div>
+      ) : (
+        Object.entries(porDia).map(([dia, itens]) => (
+          <div key={dia}>
+            <p style={{ fontSize: '0.68rem', fontWeight: '700', color: 'var(--texto-apagado)', textTransform: 'uppercase', letterSpacing: '1.2px', marginBottom: '12px', paddingLeft: '38px' }}>
+              {dia}
+            </p>
+            <div style={{ display: 'flex', flexDirection: 'column' }}>
+              {itens.map((log, i) => {
+                const ic = iconeLog(log.tipo)
+                const ultimo = i === itens.length - 1
+                return (
+                  <div key={log._id} style={{ display: 'flex', alignItems: 'flex-start', gap: '12px', padding: '10px 0', position: 'relative' }}>
+                    {/* Linha vertical */}
+                    {!ultimo && (
+                      <div style={{ position: 'absolute', left: '15px', top: '34px', bottom: '-10px', width: '1px', background: 'var(--borda)' }} />
+                    )}
+                    {/* Ícone */}
+                    <div style={{ width: '30px', height: '30px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, background: ic.bg, color: ic.cor }}>
+                      {ic.icone}
+                    </div>
+                    {/* Conteúdo */}
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <p style={{ fontSize: '0.875rem', color: 'var(--texto)', margin: 0, lineHeight: '1.4' }}>
+                        <strong style={{ fontWeight: '600' }}>{log.usuario?.nome || 'Alguém'}</strong>{' '}
+                        {log.descricao}
+                      </p>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '4px' }}>
+                        {badgeCategoria(log.categoria)}
+                        <span style={{ fontSize: '0.72rem', color: 'var(--texto-apagado)' }}>
+                          {new Date(log.criadoEm).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                )
+              })}
             </div>
-          ))}
-        </div>
-      ))}
+          </div>
+        ))
+      )}
     </div>
   )
 }
@@ -1512,7 +1852,7 @@ export default function DashboardAdmin() {
     ] : []),
 
     // Histórico — sempre visível
-    { id: 'historico', label: 'Histórico', icone: <Icone.CheckCircle size={16} /> },
+    { id: 'historico', label: 'Histórico', icone: <Icone.Clock size={16} /> },
   ]
 
   const renderPagina = () => {

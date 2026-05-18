@@ -20,6 +20,7 @@ const checklistRoutes = require('./routes/checklist');
 const clienteRoutes = require('./routes/cliente');
 const painelRoutes = require('./routes/painel');
 const feedbackRoutes = require('./routes/feedback');
+const logRoutes = require('./routes/log');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -73,10 +74,11 @@ app.use('/api', limitadorGeral);
 // ── Rate Limit específico pra autenticação — 10 tentativas/15min ──
 const limitadorAuth = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 10,
+  max: 20,
   standardHeaders: true,
   legacyHeaders: false,
   message: { erro: 'Muitas tentativas de login. Aguarde 15 minutos.' },
+  skip: (req) => req.path === '/me', // /auth/me nunca é limitado
 });
 app.use('/api/auth/login', limitadorAuth);
 app.use('/api/auth/cadastro', limitadorAuth);
@@ -97,6 +99,7 @@ app.use('/api/checklist', checklistRoutes);
 app.use('/api/clientes', clienteRoutes);
 app.use('/api/painel', painelRoutes);
 app.use('/api/feedback', feedbackRoutes);
+app.use('/api/logs', logRoutes);
 
 app.get('/', (req, res) => {
   res.json({ mensagem: 'Zempofy API rodando 🚀' });

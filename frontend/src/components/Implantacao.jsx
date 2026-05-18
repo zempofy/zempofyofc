@@ -1,6 +1,50 @@
 import { useState, useEffect, useRef } from 'react'
+import { createPortal } from 'react-dom'
 import api from '../services/api'
 import { useToast } from './Toast'
+
+
+// ── Balão de tour ──
+function Balao({ alvo, titulo, texto, passo, total, onProximo, onFechar, posicao = 'bottom' }) {
+  const [coords, setCoords] = useState(null)
+  useEffect(() => {
+    if (!alvo?.current) return
+    const at = () => { const r = alvo.current?.getBoundingClientRect(); if (r) setCoords({ ...r.toJSON() }) }
+    at(); const t = setInterval(at, 100); window.addEventListener('resize', at)
+    return () => { clearInterval(t); window.removeEventListener('resize', at) }
+  }, [alvo])
+  if (!coords) return null
+  const GAP = 14; let top, left, arrowStyle
+  if (posicao === 'bottom') { top = coords.bottom + GAP; left = coords.left + coords.width / 2 - 160; arrowStyle = { top: -8, left: '50%', transform: 'translateX(-50%)', borderBottom: '8px solid #1c1c1f', borderLeft: '8px solid transparent', borderRight: '8px solid transparent' } }
+  else if (posicao === 'top') { top = coords.top - GAP - 170; left = coords.left + coords.width / 2 - 160; arrowStyle = { bottom: -8, left: '50%', transform: 'translateX(-50%)', borderTop: '8px solid #1c1c1f', borderLeft: '8px solid transparent', borderRight: '8px solid transparent' } }
+  else if (posicao === 'right') { top = coords.top + coords.height / 2 - 70; left = coords.right + GAP; arrowStyle = { top: '40%', left: -8, borderRight: '8px solid #1c1c1f', borderTop: '8px solid transparent', borderBottom: '8px solid transparent' } }
+  else { top = coords.top + coords.height / 2 - 70; left = coords.left - 334 - GAP; arrowStyle = { top: '40%', right: -8, borderLeft: '8px solid #1c1c1f', borderTop: '8px solid transparent', borderBottom: '8px solid transparent' } }
+  left = Math.max(12, Math.min(left, window.innerWidth - 340)); top = Math.max(12, Math.min(top, window.innerHeight - 200))
+  return createPortal(<>
+    <style>{`@keyframes zp{0%,100%{box-shadow:0 0 0 3px rgba(0,177,65,.3),0 0 20px rgba(0,177,65,.15)}50%{box-shadow:0 0 0 5px rgba(0,177,65,.5),0 0 30px rgba(0,177,65,.3)}}`}</style>
+    <div style={{position:'fixed',inset:0,zIndex:9990,pointerEvents:'none'}}>
+      <svg style={{position:'absolute',inset:0,width:'100%',height:'100%'}}>
+        <defs><mask id={`spi-${passo}`}><rect width="100%" height="100%" fill="white"/><rect x={coords.left-8} y={coords.top-8} width={coords.width+16} height={coords.height+16} rx="10" fill="black"/></mask></defs>
+        <rect width="100%" height="100%" fill="rgba(0,0,0,0.78)" mask={`url(#spi-${passo})`}/>
+        <rect x={coords.left-8} y={coords.top-8} width={coords.width+16} height={coords.height+16} rx="10" fill="none" stroke="rgba(0,177,65,0.8)" strokeWidth="2"/>
+      </svg>
+      <div style={{position:'absolute',left:coords.left-8,top:coords.top-8,width:coords.width+16,height:coords.height+16,borderRadius:'10px',animation:'zp 2s ease-in-out infinite'}}/>
+    </div>
+    <div style={{position:'fixed',top,left,width:'320px',background:'#1c1c1f',border:'1px solid rgba(0,177,65,0.35)',borderRadius:'14px',padding:'18px 20px',boxShadow:'0 12px 40px rgba(0,0,0,0.6)',zIndex:9999,fontFamily:'Inter,sans-serif'}}>
+      <div style={{position:'absolute',width:0,height:0,...arrowStyle}}/>
+      <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:'10px'}}>
+        <div style={{display:'flex',alignItems:'center',gap:'8px'}}><span style={{fontSize:'14px'}}>💡</span><span style={{fontSize:'0.7rem',fontWeight:'700',color:'var(--verde)',textTransform:'uppercase',letterSpacing:'1px'}}>Passo {passo+1} de {total}</span></div>
+        <button onClick={onFechar} style={{background:'none',border:'none',color:'rgba(255,255,255,0.3)',cursor:'pointer',fontSize:'14px',padding:'2px 6px'}}>✕</button>
+      </div>
+      <p style={{fontSize:'0.9rem',fontWeight:'600',color:'#fff',margin:'0 0 6px',letterSpacing:'-0.01em'}}>{titulo}</p>
+      <p style={{fontSize:'0.82rem',color:'rgba(255,255,255,0.55)',margin:0,lineHeight:'1.5'}}>{texto}</p>
+      <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginTop:'16px'}}>
+        <div style={{display:'flex',gap:'5px'}}>{Array.from({length:total}).map((_,i)=><div key={i} style={{width:i===passo?'16px':'6px',height:'6px',borderRadius:'99px',background:i===passo?'var(--verde)':'rgba(255,255,255,0.15)',transition:'all 0.2s'}}/>)}</div>
+        <button onClick={onProximo} style={{background:'var(--gradiente-verde)',color:'#fff',border:'none',borderRadius:'8px',padding:'7px 16px',fontSize:'0.82rem',fontWeight:'600',cursor:'pointer',fontFamily:'Inter,sans-serif'}}>{passo===total-1?'Concluir ✓':'Próximo →'}</button>
+      </div>
+    </div>
+  </>, document.body)
+}
 
 // ── Mapa mental horizontal da implantação ──
 function DetalheImplantacao({ implantacao: inicial, voltar, onAtualizado }) {
@@ -370,6 +414,28 @@ export default function Implantacao() {
   const [carregando, setCarregando] = useState(true)
   const [busca, setBusca] = useState('')
   const [modalAberto, setModalAberto] = useState(false)
+
+  // ── Tour ──
+  const [tourAtivo, setTourAtivo] = useState(false)
+  const [tourPasso, setTourPasso] = useState(0)
+  const refBtnNovo = useRef(null)
+  const refBusca = useRef(null)
+  const refCard = useRef(null)
+
+  const passosTour = [
+    { ref: refBtnNovo, titulo: 'Criar uma implantação', texto: 'Clique aqui para iniciar o onboarding de um novo cliente. Você precisará selecionar um modelo criado previamente.', posicao: 'bottom' },
+    { ref: refBusca, titulo: 'Busque seus clientes', texto: 'Use a busca para encontrar rapidamente um onboarding em andamento pelo nome do cliente.', posicao: 'bottom' },
+  ]
+
+  const iniciarTour = () => { setTourPasso(0); setTourAtivo(true) }
+  const fecharTour = () => setTourAtivo(false)
+  const proximoTour = () => {
+    setTourPasso(p => {
+      if (p >= passosTour.length - 1) { setTourAtivo(false); return 0 }
+      return p + 1
+    })
+  }
+  const passoAtual = tourAtivo ? passosTour[tourPasso] : null
   const [detalheSelecionado, setDetalheSelecionado] = useState(null)
   const { mostrar: toast } = useToast()
   const [confirmandoExcluir, setConfirmandoExcluir] = useState(false)
@@ -414,10 +480,29 @@ export default function Implantacao() {
     <div>
       <div style={s.header}>
         <h1 style={s.titulo}>Onboarding</h1>
-        <button style={s.btnNovo} onClick={() => setModalAberto(true)}>+ Nova empresa</button>
+        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+          <button style={{ background: 'none', border: '1px solid var(--borda)', borderRadius: '10px', padding: '10px 16px', fontFamily: 'Inter, sans-serif', fontWeight: '500', fontSize: '0.82rem', cursor: 'pointer', color: 'var(--texto-apagado)', whiteSpace: 'nowrap' }} onClick={iniciarTour}>
+            💡 Tutorial
+          </button>
+          <button ref={refBtnNovo} style={s.btnNovo} onClick={() => setModalAberto(true)}>+ Nova empresa</button>
+        </div>
       </div>
 
-      <input
+      {/* Tour */}
+      {passoAtual && (
+        <Balao
+          alvo={passoAtual.ref}
+          titulo={passoAtual.titulo}
+          texto={passoAtual.texto}
+          passo={tourPasso}
+          total={passosTour.length}
+          onProximo={proximoTour}
+          onFechar={fecharTour}
+          posicao={passoAtual.posicao}
+        />
+      )}
+
+      <input ref={refBusca}
         style={{ ...s.input, marginBottom: '20px' }}
         value={busca}
         onChange={e => setBusca(e.target.value)}
