@@ -576,9 +576,14 @@ function PainelPermissoes({ permissoes, onChange }) {
           <div
             onClick={() => {
               const novo = { ...permissoes, [p.key]: !permissoes[p.key] }
-              // Se desativar o pai, desativa também as subpermissões
-              if (permissoes[p.key] && p.subpermissoes) {
-                p.subpermissoes.forEach(s => { novo[s.key] = false })
+              if (p.subpermissoes) {
+                if (!permissoes[p.key]) {
+                  // Ativando pai — ativa todas as subpermissões automaticamente
+                  p.subpermissoes.forEach(s => { novo[s.key] = true })
+                } else {
+                  // Desativando pai — desativa todas as subpermissões
+                  p.subpermissoes.forEach(s => { novo[s.key] = false })
+                }
               }
               onChange(novo)
             }}
