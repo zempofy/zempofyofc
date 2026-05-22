@@ -111,8 +111,35 @@ app.get('/api/health', (req, res) => {
 
 // ── Conectar ao MongoDB e iniciar servidor ──
 mongoose.connect(process.env.MONGODB_URI)
-  .then(() => {
+  .then(async () => {
     console.log('✅ Conectado ao MongoDB!');
+
+    // ── Migração: ativar subpermissões de onboarding para quem já tinha gerenciarOnboarding ──
+    try {
+      const Usuario = require('./models/Usuario');
+      const resultado = await Usuario.updateMany(
+        {
+          'permissoes.gerenciarOnboarding': true,
+          $or: [
+            { 'permissoes.criarImplantacoes': { $exists: false } },
+            { 'permissoes.criarImplantacoes': false },
+          ]
+        },
+        {
+          $set: {
+            'permissoes.criarImplantacoes': true,
+            'permissoes.gerenciarModelos': true,
+            'permissoes.gerenciarBancoAtividades': true,
+          }
+        }
+      );
+      if (resultado.modifiedCount > 0) {
+        console.log(`✅ Migração: ${resultado.modifiedCount} colaborador(es) com subpermissões de onboarding atualizados.`);
+      }
+    } catch (err) {
+      console.error('⚠️ Erro na migração de subpermissões:', err.message);
+    }
+
     app.listen(PORT, () => console.log(`🚀 Servidor rodando na porta ${PORT}`));
   })
   .catch(err => console.error('❌ Erro ao conectar ao MongoDB:', err));
