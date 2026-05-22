@@ -727,6 +727,7 @@ export default function DashboardFuncionario() {
       {pagina === 'checklist' && <BancoAtividades />}
       {pagina === 'clientes' && <Clientes />}
       {pagina === 'equipe' && <PaginaEquipeColaborador />}
+      {pagina === 'setores' && <Setores funcionarios={[]} />}
       {pagina === 'onboarding' && <Implantacao />}
       {pagina === 'chat' && <Chat setPagina={setPagina} />}
       {pagina === 'anotacoes' && <Anotacoes />}
