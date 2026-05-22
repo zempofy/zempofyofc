@@ -7,7 +7,9 @@ const usuarioSchema = new mongoose.Schema({
   senha: { type: String, required: true },
   cargo: { type: String, enum: ['admin', 'colaborador'], default: 'colaborador' },
   permissoes: {
-    gerenciarEquipe:        { type: Boolean, default: false },
+    gerenciarEquipe:          { type: Boolean, default: false },
+    gerenciarMembros:         { type: Boolean, default: false },
+    gerenciarSetores:         { type: Boolean, default: false },
     gerenciarOnboarding:    { type: Boolean, default: false },
     // Subpermissões de onboarding
     criarImplantacoes:      { type: Boolean, default: false },

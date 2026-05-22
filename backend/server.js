@@ -136,6 +136,26 @@ mongoose.connect(process.env.MONGODB_URI)
       if (resultado.modifiedCount > 0) {
         console.log(`✅ Migração: ${resultado.modifiedCount} colaborador(es) com subpermissões de onboarding atualizados.`);
       }
+
+      // Migração subpermissões de equipe
+      const resultadoEquipe = await Usuario.updateMany(
+        {
+          'permissoes.gerenciarEquipe': true,
+          $or: [
+            { 'permissoes.gerenciarMembros': { $exists: false } },
+            { 'permissoes.gerenciarMembros': false },
+          ]
+        },
+        {
+          $set: {
+            'permissoes.gerenciarMembros': true,
+            'permissoes.gerenciarSetores': true,
+          }
+        }
+      );
+      if (resultadoEquipe.modifiedCount > 0) {
+        console.log(`✅ Migração: ${resultadoEquipe.modifiedCount} colaborador(es) com subpermissões de equipe atualizados.`);
+      }
     } catch (err) {
       console.error('⚠️ Erro na migração de subpermissões:', err.message);
     }

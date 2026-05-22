@@ -672,8 +672,9 @@ export default function DashboardFuncionario() {
     ...(temPermissao('gerenciarEquipe') ? [{
       id: 'gestao', label: 'Gestão', icone: <Icone.UsersThree size={16} />,
       subItens: [
-        { id: 'equipe', label: 'Equipe' },
-      ]
+        ...(temPermissao('gerenciarMembros') ? [{ id: 'equipe', label: 'Equipe' }] : []),
+        ...(temPermissao('gerenciarSetores') ? [{ id: 'setores', label: 'Setores' }] : []),
+      ].filter(Boolean)
     }] : []),
 
     // Onboarding — baseado nas subpermissões

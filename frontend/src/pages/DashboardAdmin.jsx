@@ -530,7 +530,10 @@ const stylesInicio = {
 }
 
 const PERMISSOES_LABELS = [
-  { key: 'gerenciarEquipe',     label: 'Gerenciar equipe',           desc: 'Adicionar e remover membros' },
+  { key: 'gerenciarEquipe', label: 'Gerenciar equipe', desc: 'Acesso à gestão do escritório', subpermissoes: [
+    { key: 'gerenciarMembros', label: 'Gerenciar membros da equipe', desc: 'Adicionar, editar e remover colaboradores' },
+    { key: 'gerenciarSetores', label: 'Gerenciar setores',           desc: 'Criar, editar e remover setores do escritório' },
+  ]},
   { key: 'gerenciarOnboarding', label: 'Gerenciar onboarding',       desc: 'Acesso ao módulo de onboarding', subpermissoes: [
     { key: 'criarImplantacoes',        label: 'Criar e excluir implantações', desc: 'Iniciar e remover onboardings de clientes' },
     { key: 'gerenciarModelos',         label: 'Criar, editar e excluir modelos', desc: 'Gerenciar templates de onboarding' },
@@ -631,7 +634,8 @@ function PainelPermissoes({ permissoes, onChange }) {
 }
 
 const PERMISSOES_VAZIAS = {
-  gerenciarEquipe: false, gerenciarOnboarding: false,
+  gerenciarEquipe: false, gerenciarMembros: false, gerenciarSetores: false,
+  gerenciarOnboarding: false,
   criarImplantacoes: false, gerenciarModelos: false, gerenciarBancoAtividades: false,
   gerenciarClientes: false, verRelatorios: false, publicarMural: false, criarTarefas: false,
 }
