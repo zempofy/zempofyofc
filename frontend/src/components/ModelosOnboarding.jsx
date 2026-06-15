@@ -195,6 +195,11 @@ function PainelAdicionarAtividade({ setor, todasAtividades, tarefasDoModelo, onA
   const setorComMembros = setoresComMembros?.find(s => s._id === setor._id)
   const idsMembroSetor = setorComMembros?.membros?.map(m => m._id || m) || []
   const funcionariosDoSetor = funcionarios.filter(f => idsMembroSetor.includes(f._id))
+  // Mostrar membros do setor + quem não está no setor
+  const outrosFuncionariosMod = funcionarios.filter(f => !idsMembroSetor.includes(f._id))
+  const opcoesFuncionarios = funcionariosDoSetor.length > 0
+    ? [...funcionariosDoSetor, ...outrosFuncionariosMod]
+    : funcionarios
   const [aba, setAba] = useState('banco') // 'banco' | 'nova'
   const [busca, setBusca] = useState('')
   const [novaDesc, setNovaDesc] = useState('')
@@ -313,10 +318,7 @@ function PainelAdicionarAtividade({ setor, todasAtividades, tarefasDoModelo, onA
             )}
             <select style={s.input} value={novaResp} onChange={e => setNovaResp(e.target.value)}>
               <option value="">Em aberto</option>
-              {funcionariosDoSetor.length > 0
-                ? funcionariosDoSetor.map(f => <option key={f._id} value={f._id}>{f.nome}</option>)
-                : funcionarios.map(f => <option key={f._id} value={f._id}>{f.nome}</option>)
-              }
+              {opcoesFuncionarios.map(f => <option key={f._id} value={f._id}>{f.nome}</option>)}
             </select>
           </div>
           <div style={s.campo}>

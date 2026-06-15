@@ -1802,7 +1802,7 @@ export default function DashboardAdmin() {
         (!t.responsavel && (t.criadoPor?._id === meuId || t.criadoPor === meuId))
       )
       setTarefas(minhas)
-      setFuncionarios(rFunc.data.filter(f => f.cargo !== 'admin'))
+      setFuncionarios(rFunc.data) // inclui titular para aparecer nas opções de setor e responsável
     } catch (err) {
       console.error(err)
     }
