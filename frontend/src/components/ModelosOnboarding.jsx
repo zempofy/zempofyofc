@@ -341,7 +341,8 @@ function TelaDetalhe({ modelo: modeloInicial, voltar, onAtualizado }) {
   const [modelo, setModelo] = useState(modeloInicial)
   const [todasAtividades, setTodasAtividades] = useState([])
   const [funcionarios, setFuncionarios] = useState([])
-  const [setoresComMembros, setSetoresComMembros] = useState([]) // setores com membros populados
+  const [setoresComMembros, setSetoresComMembros] = useState([])
+  const [confirmRemover, setConfirmRemover] = useState(null) // { setorId, atividadeId, nomeAtividade } // setores com membros populados
   const [painelSetor, setPainelSetor] = useState(null) // setor que está com painel aberto
   const [tarefasPorSetor, setTarefasPorSetor] = useState({})
   const [salvando, setSalvando] = useState(false)
@@ -386,10 +387,17 @@ function TelaDetalhe({ modelo: modeloInicial, voltar, onAtualizado }) {
     await salvarModelo(novoMapa)
   }
 
-  const removerAtividade = async (setorId, atividadeId) => {
+  const removerAtividade = (setorId, atividadeId, nomeAtividade) => {
+    setConfirmRemover({ setorId, atividadeId, nomeAtividade })
+  }
+
+  const confirmarRemocao = async () => {
+    if (!confirmRemover) return
+    const { setorId, atividadeId } = confirmRemover
     const novaLista = (tarefasPorSetor[setorId] || []).filter(t => t._id !== atividadeId)
     const novoMapa = { ...tarefasPorSetor, [setorId]: novaLista }
     setTarefasPorSetor(novoMapa)
+    setConfirmRemover(null)
     await salvarModelo(novoMapa)
   }
 
@@ -414,6 +422,7 @@ function TelaDetalhe({ modelo: modeloInicial, voltar, onAtualizado }) {
 
   return (
     <div style={{ display: 'flex', gap: '0', minHeight: '100%' }}>
+      <style>{`.mod-ativ:hover .mod-remov { opacity: 1 !important; }`}</style>
       {/* Conteúdo principal */}
       <div style={{ flex: 1, minWidth: 0 }}>
         {/* Cabeçalho */}
@@ -472,7 +481,7 @@ function TelaDetalhe({ modelo: modeloInicial, voltar, onAtualizado }) {
                         <button
                           style={s.btnRemov}
                           className="mod-remov"
-                          onClick={() => removerAtividade(setor._id, at._id)}
+                          onClick={() => removerAtividade(setor._id, at._id, at.descricao)}
                           title="Remover do modelo"
                         >✕</button>
                       </div>
@@ -484,6 +493,38 @@ function TelaDetalhe({ modelo: modeloInicial, voltar, onAtualizado }) {
           })}
         </div>
       </div>
+
+      {/* Modal confirmação remover atividade */}
+      {confirmRemover && createPortal(
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}
+          onClick={() => setConfirmRemover(null)}>
+          <div style={{ background: 'var(--card)', border: '1px solid var(--borda)', borderRadius: '16px', width: '100%', maxWidth: '420px', boxShadow: '0 24px 64px rgba(0,0,0,0.6)' }}
+            onClick={e => e.stopPropagation()}>
+            <div style={{ padding: '20px 24px', borderBottom: '1px solid var(--borda)' }}>
+              <p style={{ fontWeight: '700', fontSize: '1rem', color: 'var(--texto)', fontFamily: 'Inter, sans-serif' }}>Remover atividade do modelo</p>
+            </div>
+            <div style={{ padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              <p style={{ fontSize: '0.875rem', color: 'var(--texto)', fontFamily: 'Inter, sans-serif' }}>
+                Tem certeza que deseja remover <strong>"{confirmRemover.nomeAtividade}"</strong> deste modelo?
+              </p>
+              <div style={{ background: 'rgba(251,191,36,0.08)', border: '1px solid rgba(251,191,36,0.2)', borderRadius: '10px', padding: '12px 14px' }}>
+                <p style={{ fontSize: '0.8rem', color: '#fbbf24', fontFamily: 'Inter, sans-serif', lineHeight: '1.5' }}>
+                  ⚠️ Onboardings já em andamento não serão afetados. Esta alteração será aplicada apenas aos próximos onboardings criados com este modelo.
+                </p>
+              </div>
+            </div>
+            <div style={{ padding: '16px 24px', borderTop: '1px solid var(--borda)', display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
+              <button onClick={() => setConfirmRemover(null)} style={{ background: 'none', border: '1px solid var(--borda)', borderRadius: '10px', color: 'var(--texto-apagado)', padding: '9px 20px', fontFamily: 'Inter, sans-serif', fontWeight: '500', fontSize: '0.875rem', cursor: 'pointer' }}>
+                Cancelar
+              </button>
+              <button onClick={confirmarRemocao} style={{ background: 'rgba(248,113,113,0.15)', border: '1px solid rgba(248,113,113,0.3)', borderRadius: '10px', color: '#f87171', padding: '9px 20px', fontFamily: 'Inter, sans-serif', fontWeight: '600', fontSize: '0.875rem', cursor: 'pointer' }}>
+                Remover
+              </button>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
 
       {/* Painel lateral direito */}
       {painelSetor && (
