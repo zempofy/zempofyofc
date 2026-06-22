@@ -155,17 +155,17 @@ router.post('/', autenticar, async (req, res) => {
         const nomeEmpresa = req.usuario.empresa?.nome || 'seu escritório';
         const criadoPor = req.usuario.nome;
 
-        // Coleta todos os responsáveis únicos de todas as etapas
-        const responsavelIds = new Set();
+        // Coleta IDs de todas as tarefas de todas as etapas
+        const tarefaIds = [];
         implantacao.etapas.forEach(etapa => {
           etapa.tarefas.forEach(t => {
-            if (t.tarefa) responsavelIds.add(t.tarefa.toString());
+            if (t.tarefa) tarefaIds.push(t.tarefa);
           });
         });
 
         // Busca e-mails de todos os responsáveis via tarefas criadas
         const tarefasPopuladas = await Tarefa.find({
-          _id: { $in: [...responsavelIds] }
+          _id: { $in: tarefaIds }
         }).populate('responsavel', 'email nome');
 
         const emailsEnvolvidos = [...new Set(
@@ -174,6 +174,7 @@ router.post('/', autenticar, async (req, res) => {
             .filter(Boolean)
             .filter(e => e !== req.usuario.email)
         )];
+        console.log('📧 E-mails onboarding criado:', emailsEnvolvidos);
 
         // E-mail 1: avisa todos os envolvidos que o onboarding foi criado
         await enviarOnboardingCriado({
