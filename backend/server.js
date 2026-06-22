@@ -64,7 +64,7 @@ app.use(express.urlencoded({ limit: '10mb', extended: true }));
 // ── Rate Limit global — 200 req/15min por IP ──
 const limitadorGeral = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 200,
+  max: 1000, // ~65 req/min — mais que suficiente pro uso normal
   standardHeaders: true,
   legacyHeaders: false,
   message: { erro: 'Muitas requisições. Tente novamente em alguns minutos.' },
@@ -74,7 +74,7 @@ app.use('/api', limitadorGeral);
 // ── Rate Limit específico pra autenticação — 10 tentativas/15min ──
 const limitadorAuth = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 20,
+  max: 30, // tentativas de login
   standardHeaders: true,
   legacyHeaders: false,
   message: { erro: 'Muitas tentativas de login. Aguarde 15 minutos.' },
@@ -155,6 +155,16 @@ mongoose.connect(process.env.MONGODB_URI)
       );
       if (resultadoEquipe.modifiedCount > 0) {
         console.log(`✅ Migração: ${resultadoEquipe.modifiedCount} colaborador(es) com subpermissões de equipe atualizados.`);
+      }
+
+      // Migração clientes: campo nome -> razaoSocial
+      const Cliente = require('./models/Cliente');
+      const clientesAntigos = await Cliente.find({ razaoSocial: { $exists: false }, nome: { $exists: true } });
+      for (const c of clientesAntigos) {
+        await Cliente.updateOne({ _id: c._id }, { $set: { razaoSocial: c.nome, status: 'ativo', servicosContratados: [] } });
+      }
+      if (clientesAntigos.length > 0) {
+        console.log(`✅ Migração: ${clientesAntigos.length} cliente(s) migrado(s) para novo modelo.`);
       }
     } catch (err) {
       console.error('⚠️ Erro na migração de subpermissões:', err.message);

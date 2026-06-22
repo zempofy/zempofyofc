@@ -2,6 +2,7 @@ const express = require('express');
 const registrarLog = require('../services/log');
 const { autenticar } = require('../middleware/auth');
 const Cliente = require('../models/Cliente');
+const Implantacao = require('../models/Implantacao');
 
 const router = express.Router();
 
@@ -17,27 +18,48 @@ router.get('/', autenticar, async (req, res) => {
   }
 });
 
+// GET /api/clientes/:id
+router.get('/:id', autenticar, async (req, res) => {
+  try {
+    const cliente = await Cliente.findOne({ _id: req.params.id, empresa: req.usuario.empresa._id })
+      .populate('criadoPor', 'nome');
+    if (!cliente) return res.status(404).json({ erro: 'Cliente não encontrado.' });
+
+    // Buscar onboardings vinculados ao CNPJ do cliente
+    const cnpjLimpo = cliente.cnpj?.replace(/\D/g, '');
+    const onboardings = cnpjLimpo
+      ? await Implantacao.find({ empresa: req.usuario.empresa._id, cnpj: { $regex: cnpjLimpo } })
+          .select('nomeCliente status criadoEm etapas')
+          .populate('modelo', 'nome')
+          .sort({ criadoEm: -1 })
+      : [];
+
+    res.json({ ...cliente.toObject(), onboardings });
+  } catch (err) {
+    res.status(500).json({ erro: 'Erro ao buscar cliente.' });
+  }
+});
+
 // POST /api/clientes
 router.post('/', autenticar, async (req, res) => {
-  const { nome, cnpj, regime, tipo, observacoes } = req.body;
-  if (!nome?.trim()) return res.status(400).json({ erro: 'Nome é obrigatório.' });
+  const { razaoSocial, cnpj, regime, porte, servicosContratados } = req.body;
+  if (!razaoSocial?.trim()) return res.status(400).json({ erro: 'Razão social é obrigatória.' });
+  if (!porte) return res.status(400).json({ erro: 'Porte é obrigatório.' });
+  if (!regime) return res.status(400).json({ erro: 'Regime tributário é obrigatório.' });
+  if (!servicosContratados?.length) return res.status(400).json({ erro: 'Informe ao menos um serviço contratado.' });
   try {
-    // Verifica CNPJ duplicado
     if (cnpj) {
       const cnpjLimpo = cnpj.replace(/\D/g, '');
       const existe = await Cliente.findOne({ empresa: req.usuario.empresa._id, cnpj: { $regex: cnpjLimpo } });
       if (existe) return res.status(400).json({ erro: 'Já existe um cliente com esse CNPJ.' });
     }
     const cliente = await Cliente.create({
-      nome: nome.trim(),
-      cnpj: cnpj || '',
-      regime: regime || '',
-      tipo: tipo || '',
-      observacoes: observacoes || '',
+      ...req.body,
+      razaoSocial: razaoSocial.trim(),
       empresa: req.usuario.empresa._id,
       criadoPor: req.usuario._id,
     });
-    registrarLog({ empresa: req.usuario.empresa._id, usuario: req.usuario._id, tipo: 'cliente_criado', descricao: 'Cadastrou o cliente ' + (nome || ''), meta: { nome } });
+    registrarLog({ empresa: req.usuario.empresa._id, usuario: req.usuario._id, tipo: 'cliente_criado', descricao: 'Cadastrou o cliente ' + razaoSocial.trim(), meta: { nome: razaoSocial } });
     res.status(201).json(cliente);
   } catch (err) {
     res.status(500).json({ erro: 'Erro ao criar cliente.' });
@@ -46,14 +68,14 @@ router.post('/', autenticar, async (req, res) => {
 
 // PUT /api/clientes/:id
 router.put('/:id', autenticar, async (req, res) => {
-  const { nome, cnpj, regime, tipo, observacoes } = req.body;
   try {
     const cliente = await Cliente.findOneAndUpdate(
       { _id: req.params.id, empresa: req.usuario.empresa._id },
-      { nome: nome?.trim(), cnpj, regime, tipo, observacoes },
+      req.body,
       { new: true }
     );
     if (!cliente) return res.status(404).json({ erro: 'Cliente não encontrado.' });
+    registrarLog({ empresa: req.usuario.empresa._id, usuario: req.usuario._id, tipo: 'cliente_editado', descricao: 'Editou o cliente ' + cliente.razaoSocial });
     res.json(cliente);
   } catch (err) {
     res.status(500).json({ erro: 'Erro ao editar cliente.' });
@@ -63,8 +85,8 @@ router.put('/:id', autenticar, async (req, res) => {
 // DELETE /api/clientes/:id
 router.delete('/:id', autenticar, async (req, res) => {
   try {
-    await Cliente.findOneAndDelete({ _id: req.params.id, empresa: req.usuario.empresa._id });
-    registrarLog({ empresa: req.usuario.empresa._id, usuario: req.usuario._id, tipo: 'cliente_excluido', descricao: 'Removeu um cliente' });
+    const cliente = await Cliente.findOneAndDelete({ _id: req.params.id, empresa: req.usuario.empresa._id });
+    if (cliente) registrarLog({ empresa: req.usuario.empresa._id, usuario: req.usuario._id, tipo: 'cliente_excluido', descricao: 'Removeu o cliente ' + cliente.razaoSocial });
     res.json({ mensagem: 'Cliente removido.' });
   } catch (err) {
     res.status(500).json({ erro: 'Erro ao remover cliente.' });

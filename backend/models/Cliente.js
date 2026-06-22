@@ -1,15 +1,60 @@
 const mongoose = require('mongoose');
 
 const clienteSchema = new mongoose.Schema({
-  nome: { type: String, required: true, trim: true },
-  cnpj: { type: String, default: '', trim: true },
-  regime: { type: String, enum: ['simples_nacional', 'lucro_presumido', 'lucro_real', 'mei', 'outro', ''], default: '' },
-  tipo: { type: String, enum: ['servico', 'comercio', 'ambos', ''], default: '' },
-  observacoes: { type: String, default: '' },
-  inicioServicos: { type: Date, default: null },
   empresa: { type: mongoose.Schema.Types.ObjectId, ref: 'Empresa', required: true },
   criadoPor: { type: mongoose.Schema.Types.ObjectId, ref: 'Usuario', required: true },
-  criadoEm: { type: Date, default: Date.now }
+  criadoEm: { type: Date, default: Date.now },
+  status: { type: String, enum: ['ativo', 'inativo', 'encerramento'], default: 'ativo' },
+
+  // Dados básicos — obrigatórios
+  razaoSocial: { type: String, required: true, trim: true },
+  nomeFantasia: { type: String, default: '', trim: true },
+  cnpj: { type: String, default: '', trim: true },
+  porte: { type: String, enum: ['mei', 'me', 'epp', 'grande', ''], default: '' },
+  regime: { type: String, enum: ['simples_nacional', 'lucro_presumido', 'lucro_real', 'mei', 'outro', ''], default: '' },
+
+  // Dados complementares
+  dataAbertura: { type: Date, default: null },
+  cnaePrincipal: { type: String, default: '' },
+
+  // Contato
+  telefone: { type: String, default: '' },
+  email: { type: String, default: '' },
+  endereco: {
+    logradouro: { type: String, default: '' },
+    numero: { type: String, default: '' },
+    complemento: { type: String, default: '' },
+    bairro: { type: String, default: '' },
+    cidade: { type: String, default: '' },
+    estado: { type: String, default: '' },
+    cep: { type: String, default: '' },
+  },
+
+  // Sócio/Responsável
+  socio: {
+    nome: { type: String, default: '' },
+    cpf: { type: String, default: '' },
+    telefone: { type: String, default: '' },
+    email: { type: String, default: '' },
+  },
+
+  // Serviços contratados — obrigatório
+  servicosContratados: [{
+    nome: { type: String, required: true },
+    dataInicio: { type: Date, default: null },
+    honorarioMensal: { type: Number, default: 0 },
+    diaVencimento: { type: Number, default: null },
+  }],
+
+  // Certidões
+  certidoes: [{
+    tipo: { type: String, enum: ['federal', 'estadual', 'municipal', 'fgts', 'trabalhista', 'outro'] },
+    vencimento: { type: Date, default: null },
+    situacao: { type: String, enum: ['regular', 'irregular', 'a_vencer'], default: 'regular' },
+  }],
+
+  // Observações internas
+  observacoes: { type: String, default: '' },
 });
 
 module.exports = mongoose.model('Cliente', clienteSchema);

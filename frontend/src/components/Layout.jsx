@@ -296,25 +296,12 @@ function PainelPerfil({ usuario, sair, fechar, setPagina, setModalAcessoExterno,
 
         <div style={styles.painelDivisor} />
 
-        {usuario?.cargo === 'admin' && (
-          <>
-            <p style={styles.painelSecaoTitulo}>Empresa</p>
-            <button style={styles.painelItem} onClick={() => irPara('plano')}>
-              <span><Icone.CreditCard size={15} /></span> Meu plano
-            </button>
-            <button style={styles.painelItem} onClick={() => irPara('equipe')}>
-              <span><Icone.Users size={15} /></span> Minha equipe
-            </button>
-            <div style={styles.painelDivisor} />
-          </>
-        )}
-
-        <p style={styles.painelSecaoTitulo}>Conta</p>
+        <p style={styles.painelSecaoTitulo}>Atalhos</p>
         <button style={styles.painelItem} onClick={() => { fechar(); setModalAcessoExterno(true) }}>
           <span><Icone.Lock size={15} /></span> Acesso e senha
         </button>
         <button style={styles.painelItem} onClick={() => { fechar(); setModalConfigExterno(true) }}>
-          <span><Icone.Settings size={15} /></span> Configurações
+          <span><Icone.Settings size={15} /></span> Preferências
         </button>
 
         <div style={{ flex: 1 }} />
@@ -378,7 +365,7 @@ function BannerVerificacao() {
 }
 
 // ── Navegação ──
-function NavItens({ menuItens, paginaAtual, setPagina, sidebarAberta }) {
+function NavItens({ menuItens, paginaAtual, setPagina, sidebarAberta, onItemClick }) {
   const [gruposAbertos, setGruposAbertos] = useState(() => {
     const inicial = {}
     menuItens.forEach(item => {
@@ -449,7 +436,7 @@ function NavItens({ menuItens, paginaAtual, setPagina, sidebarAberta }) {
                         ...styles.navBtnSub,
                         ...(paginaAtual === sub.id ? styles.navBtnAtivo : {}),
                       }}
-                      onClick={() => setPagina(sub.id)}
+                      onClick={() => { setPagina(sub.id); if (onItemClick) onItemClick() }}
                     >
                       <span style={styles.navDot} />
                       <span style={styles.navLabel}>{sub.label}</span>
@@ -470,7 +457,7 @@ function NavItens({ menuItens, paginaAtual, setPagina, sidebarAberta }) {
               ...(paginaAtual === item.id ? styles.navBtnAtivo : {}),
               justifyContent: sidebarAberta ? 'flex-start' : 'center',
             }}
-            onClick={() => setPagina(item.id)}
+            onClick={() => { setPagina(item.id); if (onItemClick) onItemClick() }}
             title={!sidebarAberta ? item.label : ''}
           >
             <span style={styles.navIcone}>{item.icone}</span>
@@ -483,12 +470,15 @@ function NavItens({ menuItens, paginaAtual, setPagina, sidebarAberta }) {
 }
 
 export default function Layout({ children, menuItens, paginaAtual, setPagina }) {
-  const { usuario, sair, recarregarUsuario } = useAuth()
+  const { usuario, sair, recarregarUsuario, temPermissao } = useAuth()
+  const isTitular = usuario?.cargo === 'admin'
   const [sidebarAberta, setSidebarAberta] = useState(true)
   const [painelAberto, setPainelAberto] = useState(false)
   const [modalAcesso, setModalAcesso] = useState(false)
   const [modalConfig, setModalConfig] = useState(false)
   const [naoLidasChat, setNaoLidasChat] = useState(0)
+  const [painelConfigAberto, setPainelConfigAberto] = useState(false)
+  const [paginaConfig, setPaginaConfig] = useState(null)
 
   useEffect(() => {
     const buscarNaoLidas = async () => {
@@ -589,16 +579,148 @@ export default function Layout({ children, menuItens, paginaAtual, setPagina }) 
             paginaAtual={paginaAtual}
             setPagina={setPagina}
             sidebarAberta={sidebarAberta}
+            onItemClick={painelConfigAberto ? () => { setPainelConfigAberto(false); setSidebarAberta(true) } : null}
           />
         </nav>
 
-        {/* Rodapé da sidebar — versão */}
-        {sidebarAberta && (
-          <div style={styles.sidebarRodape}>
-            <span style={styles.sidebarVersao}>Zempofy Onboarding</span>
-          </div>
-        )}
+        {/* Rodapé da sidebar */}
+        <div style={{ padding: '8px 6px', borderTop: '1px solid rgba(255,255,255,0.05)', flexShrink: 0, display: 'flex', flexDirection: 'column', gap: '2px' }}>
+          <button
+            className="nav-btn"
+            style={{
+              ...styles.navBtn,
+              ...(painelConfigAberto ? styles.navBtnAtivo : {}),
+              justifyContent: sidebarAberta ? 'flex-start' : 'center',
+            }}
+            onClick={() => {
+              if (!painelConfigAberto) {
+                setSidebarAberta(false)
+                setPainelConfigAberto(true)
+              } else {
+                setPainelConfigAberto(false)
+                setSidebarAberta(true)
+              }
+            }}
+            title="Configurações"
+          >
+            <span style={styles.navIcone}><Icone.Settings size={18} /></span>
+            {sidebarAberta && <span style={styles.navLabel}>Configurações</span>}
+          </button>
+          {sidebarAberta && (
+            <div style={styles.sidebarRodape}>
+              <span style={styles.sidebarVersao}>Zempofy Onboarding</span>
+            </div>
+          )}
+        </div>
       </aside>
+
+      {/* Painel de Configurações */}
+      {painelConfigAberto && (
+        <div style={{
+          position: 'fixed',
+          top: TOPBAR_ALTURA,
+          left: SIDEBAR_FECHADA,
+          bottom: 0,
+          width: '240px',
+          background: '#0d0d0f',
+          borderRight: '1px solid rgba(255,255,255,0.07)',
+          zIndex: 48,
+          display: 'flex',
+          flexDirection: 'column',
+          overflowY: 'auto',
+          padding: '16px 0',
+        }}>
+          <div style={{ padding: '0 12px 12px 16px', borderBottom: '1px solid rgba(255,255,255,0.06)', marginBottom: '8px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <p style={{ fontSize: '0.72rem', fontWeight: '700', color: 'rgba(255,255,255,0.9)', textTransform: 'uppercase', letterSpacing: '1.2px' }}>Configurações</p>
+            <button
+              onClick={() => setPainelConfigAberto(false)}
+              style={{ background: 'none', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '6px', color: 'rgba(255,255,255,0.4)', width: '26px', height: '26px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', fontSize: '12px', flexShrink: 0 }}
+              title="Fechar configurações"
+            >‹</button>
+          </div>
+
+          {/* Onboarding — só com permissão */}
+          {(isTitular || temPermissao('gerenciarOnboarding')) && (
+            <>
+              <p style={styles.configSecao}>Onboarding</p>
+              {[
+                ...(isTitular || temPermissao('gerenciarModelos') ? [{ id: 'modelos', label: 'Modelos', icone: <Icone.ClipboardList size={16} /> }] : []),
+                ...(isTitular || temPermissao('gerenciarBancoAtividades') ? [{ id: 'checklist', label: 'Banco de atividades', icone: <Icone.Edit size={16} /> }] : []),
+              ].map(item => (
+                <button key={item.id} style={{
+                  ...styles.configItem,
+                  ...(paginaConfig === item.id ? styles.configItemAtivo : {}),
+                }} onClick={() => { setPaginaConfig(item.id); setPagina(item.id) }}>
+                  <span style={{ opacity: 0.7, display: 'flex' }}>{item.icone}</span>
+                  {item.label}
+                </button>
+              ))}
+              <div style={styles.configDivisor} />
+            </>
+          )}
+
+          {/* Equipe — só com permissão */}
+          {(isTitular || temPermissao('gerenciarEquipe')) && (
+            <>
+              <p style={styles.configSecao}>Equipe</p>
+              {[
+                ...(isTitular || temPermissao('gerenciarMembros') ? [{ id: 'equipe', label: 'Colaboradores', icone: <Icone.Users size={16} /> }] : []),
+                ...(isTitular || temPermissao('gerenciarSetores') ? [{ id: 'setores', label: 'Setores', icone: <Icone.UsersThree size={16} /> }] : []),
+              ].map(item => (
+                <button key={item.id} style={{
+                  ...styles.configItem,
+                  ...(paginaConfig === item.id ? styles.configItemAtivo : {}),
+                }} onClick={() => { setPaginaConfig(item.id); setPagina(item.id) }}>
+                  <span style={{ opacity: 0.7, display: 'flex' }}>{item.icone}</span>
+                  {item.label}
+                </button>
+              ))}
+              <div style={styles.configDivisor} />
+            </>
+          )}
+
+          {/* Sistema — só titular */}
+          {isTitular && (
+            <>
+              <p style={styles.configSecao}>Sistema</p>
+              <button style={{
+                ...styles.configItem,
+                ...(paginaConfig === 'servicos' ? styles.configItemAtivo : {}),
+              }} onClick={() => { setPaginaConfig('servicos'); setPagina('servicos') }}>
+                <span style={{ opacity: 0.7, display: 'flex' }}><Icone.CreditCard size={16} /></span>
+                Serviços
+              </button>
+              <div style={styles.configDivisor} />
+            </>
+          )}
+
+          {/* Conta — todos */}
+          <p style={styles.configSecao}>Conta</p>
+          <button style={{
+            ...styles.configItem,
+            ...(paginaConfig === 'acesso-senha' ? styles.configItemAtivo : {}),
+          }} onClick={() => { setPaginaConfig('acesso-senha'); setModalAcesso(true) }}>
+            <span style={{ opacity: 0.7, display: 'flex' }}><Icone.Lock size={16} /></span>
+            Acesso e senha
+          </button>
+          {isTitular && (
+            <button style={{
+              ...styles.configItem,
+              ...(paginaConfig === 'plano' ? styles.configItemAtivo : {}),
+            }} onClick={() => { setPaginaConfig('plano'); setPagina('plano'); setPainelConfigAberto(false); setSidebarAberta(true) }}>
+              <span style={{ opacity: 0.7, display: 'flex' }}><Icone.CreditCard size={16} /></span>
+              Meu plano
+            </button>
+          )}
+          <button style={{
+            ...styles.configItem,
+            ...(paginaConfig === 'preferencias' ? styles.configItemAtivo : {}),
+          }} onClick={() => { setPaginaConfig('preferencias'); setModalConfig(true) }}>
+            <span style={{ opacity: 0.7, display: 'flex' }}><Icone.Settings size={16} /></span>
+            Preferências
+          </button>
+        </div>
+      )}
 
       {/* Painel de perfil */}
       {painelAberto && (
@@ -623,7 +745,9 @@ export default function Layout({ children, menuItens, paginaAtual, setPagina }) 
       {/* Conteúdo principal */}
       <main style={{
         ...styles.conteudo,
-        marginLeft: sidebarAberta ? SIDEBAR_LARGURA : SIDEBAR_FECHADA,
+        marginLeft: painelConfigAberto
+          ? `calc(${SIDEBAR_FECHADA} + 240px)`
+          : sidebarAberta ? SIDEBAR_LARGURA : SIDEBAR_FECHADA,
         marginTop: TOPBAR_ALTURA,
       }}>
         <div style={styles.conteudoInner} className="fade-in">
@@ -868,6 +992,38 @@ const styles = {
     boxSizing: 'border-box',
     minHeight: '100%',
     maxWidth: '1400px',
+  },
+
+  // ── Painel de Configurações ──
+  configSecao: {
+    fontSize: '0.6rem', fontWeight: '700',
+    color: 'rgba(255,255,255,0.25)',
+    textTransform: 'uppercase', letterSpacing: '1.5px',
+    padding: '10px 16px 5px',
+    fontFamily: 'Inter, sans-serif',
+  },
+  configItem: {
+    display: 'flex', alignItems: 'center', gap: '10px',
+    padding: '8px 16px',
+    background: 'none', border: 'none',
+    color: 'rgba(255,255,255,0.55)',
+    fontSize: '0.85rem', cursor: 'pointer',
+    width: '100%', textAlign: 'left',
+    fontFamily: 'Inter, sans-serif',
+    fontWeight: '500',
+    transition: 'all 0.12s',
+    borderLeft: '3px solid transparent',
+  },
+  configItemAtivo: {
+    borderLeft: '3px solid var(--verde)',
+    background: 'rgba(0,177,65,0.08)',
+    color: '#fff',
+    fontWeight: '600',
+  },
+  configDivisor: {
+    height: '1px',
+    background: 'rgba(255,255,255,0.06)',
+    margin: '8px 16px',
   },
 
   // ── Painel de perfil ──

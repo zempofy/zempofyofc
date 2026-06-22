@@ -651,11 +651,23 @@ function PaginaEquipe({ usuario, equipe, recarregar }) {
   const [confirmandoId, setConfirmandoId] = useState(null)
   const [editandoPermId, setEditandoPermId] = useState(null)
   const [permEdicao, setPermEdicao] = useState({})
+  const [podeAtribuir, setPodeAtribuir] = useState(true)
   const { mostrar } = useToast()
 
   useEffect(() => {
     api.get('/setores').then(r => setSetores(r.data)).catch(() => {})
+    if (usuario?.cargo === 'admin') {
+      api.get('/empresa').then(r => setPodeAtribuir(r.data.colaboradoresPodeAtribuirTitular ?? true)).catch(() => {})
+    }
   }, [])
+
+  const toggleAtribuir = async (valor) => {
+    setPodeAtribuir(valor)
+    try {
+      await api.put('/empresa', { colaboradoresPodeAtribuirTitular: valor })
+      mostrar(valor ? 'Colaboradores podem te atribuir tarefas.' : 'Colaboradores não podem mais te atribuir tarefas.', 'sucesso')
+    } catch { mostrar('Erro ao salvar configuração.', 'erro') }
+  }
 
   const membroParaRemover = equipe.find(f => f._id === confirmandoId)
 
@@ -718,6 +730,32 @@ function PaginaEquipe({ usuario, equipe, recarregar }) {
           {mostrarForm ? '✕ Cancelar' : '+ Novo membro'}
         </button>
       </div>
+
+      {/* Toggle — colaboradores podem atribuir tarefas ao titular */}
+      {usuario?.cargo === 'admin' && (
+        <div style={{ background: 'var(--card)', border: '1px solid var(--borda)', borderRadius: '12px', padding: '14px 18px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
+          <div>
+            <p style={{ fontSize: '0.875rem', fontWeight: '500', color: 'var(--texto)', margin: 0, fontFamily: 'Inter, sans-serif' }}>Colaboradores podem me atribuir tarefas</p>
+            <p style={{ fontSize: '0.75rem', color: 'var(--texto-apagado)', margin: '3px 0 0', fontFamily: 'Inter, sans-serif' }}>Permite que a equipe crie tarefas com você como responsável</p>
+          </div>
+          <div
+            onClick={() => toggleAtribuir(!podeAtribuir)}
+            style={{
+              width: '42px', height: '24px', borderRadius: '99px', cursor: 'pointer',
+              background: podeAtribuir ? 'var(--verde)' : 'rgba(255,255,255,0.1)',
+              position: 'relative', transition: 'background 0.2s', flexShrink: 0,
+            }}
+          >
+            <div style={{
+              position: 'absolute', top: '3px',
+              left: podeAtribuir ? '21px' : '3px',
+              width: '18px', height: '18px', borderRadius: '50%',
+              background: '#fff', transition: 'left 0.2s',
+              boxShadow: '0 1px 3px rgba(0,0,0,0.3)',
+            }} />
+          </div>
+        </div>
+      )}
 
       {mostrarForm && (
         <div style={styles.formulario}>
@@ -1622,6 +1660,24 @@ const stylesTarefas = {
 
 // ============ HISTÓRICO DE CONQUISTAS ============
 
+
+function PaginaEmDesenvolvimento({ titulo, descricao }) {
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '60vh', gap: '16px', textAlign: 'center' }}>
+      <div style={{ width: '64px', height: '64px', borderRadius: '16px', background: 'var(--card)', border: '1px solid var(--borda)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '28px' }}>
+        🚧
+      </div>
+      <div>
+        <h2 style={{ fontSize: '1.2rem', fontWeight: '700', color: 'var(--texto)', margin: '0 0 8px', fontFamily: 'Inter, sans-serif', letterSpacing: '-0.02em' }}>{titulo}</h2>
+        <p style={{ fontSize: '0.875rem', color: 'var(--texto-apagado)', maxWidth: '360px', lineHeight: '1.6', margin: 0, fontFamily: 'Inter, sans-serif' }}>{descricao}</p>
+      </div>
+      <span style={{ fontSize: '0.72rem', fontWeight: '600', color: 'var(--verde)', background: 'rgba(0,177,65,0.1)', border: '1px solid rgba(0,177,65,0.2)', borderRadius: '99px', padding: '4px 12px' }}>
+        Em breve
+      </span>
+    </div>
+  )
+}
+
 function PaginaHistorico() {
   const [logs, setLogs] = useState([])
   const [carregando, setCarregando] = useState(true)
@@ -1817,24 +1873,10 @@ export default function DashboardAdmin() {
     // Separador — Escritório
     { id: '__sep_escritorio', separador: true, label: 'Escritório' },
 
-    // Gestão: Setores sempre visível pro titular; Equipe só com permissão
-    ...(isTitular || temPermissao('gerenciarEquipe') ? [{
-      id: 'gestao', label: 'Gestão', icone: <Icone.UsersThree size={16} />,
-      subItens: [
-        ...(isTitular ? [{ id: 'setores', label: 'Setores' }] : []),
-        ...(isTitular || temPermissao('gerenciarEquipe') ? [{ id: 'equipe', label: 'Equipe' }] : []),
-      ]
-    }] : []),
-
-    // Onboarding
-    ...(isTitular || temPermissao('gerenciarOnboarding') ? [{
-      id: 'onboarding', label: 'Onboarding', icone: <Icone.ClipboardList size={16} />,
-      subItens: [
-        { id: 'implantacao', label: 'Implantação' },
-        { id: 'modelos', label: 'Modelos' },
-        { id: 'checklist', label: 'Banco de atividades' },
-      ]
-    }] : []),
+    // Implantação — uso diário
+    ...(isTitular || temPermissao('gerenciarOnboarding') ? [
+      { id: 'implantacao', label: 'Onboarding', icone: <Icone.ClipboardList size={16} /> }
+    ] : []),
 
     // Clientes
     ...(isTitular || temPermissao('gerenciarClientes') ? [
@@ -1879,6 +1921,8 @@ export default function DashboardAdmin() {
     if (pagina === 'modelos') return <ModelosOnboarding />
     if (pagina === 'checklist') return <BancoAtividades />
     if (pagina === 'setores') return <Setores funcionarios={funcionarios} />
+    if (pagina === 'plano') return <PaginaEmDesenvolvimento titulo="Meu plano" descricao="O gerenciamento de planos e assinaturas estará disponível em breve. Por enquanto, entre em contato para mais informações." />
+    if (pagina === 'servicos') return <PaginaEmDesenvolvimento titulo="Serviços" descricao="O cadastro de serviços contratados pelos clientes estará disponível em breve." />
   }
 
   return (
