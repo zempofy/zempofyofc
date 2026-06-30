@@ -8,6 +8,7 @@ const Tarefa = require('../models/Tarefa');
 const Setor = require('../models/Setor');
 const Usuario = require('../models/Usuario');
 const { enviarOnboardingCriado, enviarEtapaDesbloqueada } = require('../services/email');
+const Cliente = require('../models/Cliente');
 
 const router = express.Router();
 
@@ -148,6 +149,26 @@ router.post('/', autenticar, async (req, res) => {
     const populada = await populateImplantacao(ImplantacaoModel.findById(implantacao._id));
     res.status(201).json(populada);
     registrarLog({ empresa: req.usuario.empresa._id, usuario: req.usuario._id, tipo: 'implantacao_criada', descricao: `Criou a implantação de ${nomeCliente.trim()}`, meta: { nomeCliente } });
+
+    // Vinculação automática com cliente
+    if (cnpj?.trim()) {
+      const cnpjLimpo = cnpj.replace(/\D/g, '');
+      const clienteExistente = await Cliente.findOne({ empresa: req.usuario.empresa._id, cnpj: { $regex: cnpjLimpo } });
+      if (!clienteExistente) {
+        // Cria cliente automaticamente com dados básicos
+        await Cliente.create({
+          razaoSocial: nomeCliente.trim(),
+          cnpj: cnpj.trim(),
+          empresa: req.usuario.empresa._id,
+          criadoPor: req.usuario._id,
+          status: 'ativo',
+          porte: '',
+          regime: '',
+          servicosContratados: [],
+        });
+        console.log('✅ Cliente criado automaticamente via onboarding:', nomeCliente.trim());
+      }
+    }
 
     // Dispara e-mails em background (não bloqueia a resposta)
     setImmediate(async () => {

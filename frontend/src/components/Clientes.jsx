@@ -3,6 +3,15 @@ import { createPortal } from 'react-dom'
 import api from '../services/api'
 import { useToast } from './Toast'
 
+const PERIODICIDADES = [
+  { value: 'mensal', label: 'Mensal' },
+  { value: 'trimestral', label: 'Trimestral' },
+  { value: 'semestral', label: 'Semestral' },
+  { value: 'anual', label: 'Anual' },
+  { value: 'esporadico', label: 'Esporádico' },
+]
+const labelPeriodicidade = (v) => PERIODICIDADES.find(p => p.value === v)?.label || v
+
 const mascaraCNPJ = (v) => v.replace(/\D/g,'').slice(0,14)
   .replace(/^(\d{2})(\d)/,'$1.$2')
   .replace(/^(\d{2})\.(\d{3})(\d)/,'$1.$2.$3')
@@ -15,6 +24,26 @@ const mascaraCPF = (v) => v.replace(/\D/g,'').slice(0,11)
   .replace(/(\d{3})(\d{1,2})/,'$1-$2')
 
 const mascaraCEP = (v) => v.replace(/\D/g,'').slice(0,8).replace(/(\d{5})(\d)/,'$1-$2')
+const mascaraTelefone = (v) => {
+  const d = v.replace(/\D/g,'').slice(0,11)
+  if (d.length <= 10) return d.replace(/(\d{2})(\d{4})(\d)/,'($1) $2-$3')
+  return d.replace(/(\d{2})(\d{5})(\d)/,'($1) $2-$3')
+}
+const mascaraCNAE = (v) => {
+  const d = v.replace(/\D/g,'').slice(0,7)
+  return d.replace(/(\d{4})(\d)(\d{2})/,'$1-$2/$3').replace(/(\d{4})(\d)/,'$1-$2')
+}
+const formatarHonorario = (v) => {
+  const nums = v.replace(/\D/g,'')
+  if (!nums) return ''
+  const centavos = parseInt(nums, 10)
+  return (centavos / 100).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+}
+const honorarioParaNumero = (v) => {
+  const nums = v.replace(/\D/g,'')
+  if (!nums) return ''
+  return (parseInt(nums, 10) / 100).toFixed(2)
+}
 
 const REGIMES = [
   { value: 'simples_nacional', label: 'Simples Nacional' },
@@ -28,6 +57,15 @@ const PORTES = [
   { value: 'me', label: 'ME' },
   { value: 'epp', label: 'EPP' },
   { value: 'grande', label: 'Grande' },
+]
+const ATIVIDADES = [
+  { value: 'servico', label: 'Prestação de serviço' },
+  { value: 'comercio', label: 'Comércio' },
+  { value: 'industria', label: 'Indústria' },
+  { value: 'servico_comercio', label: 'Serviço e Comércio' },
+  { value: 'servico_industria', label: 'Serviço e Indústria' },
+  { value: 'comercio_industria', label: 'Comércio e Indústria' },
+  { value: 'todos', label: 'Serviço, Comércio e Indústria' },
 ]
 const STATUS_OPTS = [
   { value: 'ativo', label: 'Ativo', cor: '#00b141', bg: 'rgba(0,177,65,0.12)' },
@@ -64,12 +102,19 @@ function FormCliente({ cliente, fechar, onSalvo }) {
   const [aba, setAba] = useState('basico')
   const [carregando, setCarregando] = useState(false)
   const [erro, setErro] = useState('')
+  const [servicosCadastrados, setServicosCadastrados] = useState([])
+  const [mostrarListaServicos, setMostrarListaServicos] = useState(false)
+
+  useEffect(() => {
+    api.get('/servicos').then(r => setServicosCadastrados(r.data)).catch(() => {})
+  }, [])
   const [form, setForm] = useState({
     razaoSocial: cliente?.razaoSocial || '',
     nomeFantasia: cliente?.nomeFantasia || '',
     cnpj: cliente?.cnpj || '',
     porte: cliente?.porte || '',
     regime: cliente?.regime || '',
+    atividade: cliente?.atividade || '',
     dataAbertura: isoData(cliente?.dataAbertura),
     cnaePrincipal: cliente?.cnaePrincipal || '',
     status: cliente?.status || 'ativo',
@@ -79,7 +124,7 @@ function FormCliente({ cliente, fechar, onSalvo }) {
     socio: { nome: cliente?.socio?.nome||'', cpf: cliente?.socio?.cpf||'', telefone: cliente?.socio?.telefone||'', email: cliente?.socio?.email||'' },
     servicosContratados: cliente?.servicosContratados?.length
       ? cliente.servicosContratados.map(sv => ({ ...sv, dataInicio: isoData(sv.dataInicio) }))
-      : [{ nome: '', dataInicio: '', honorarioMensal: '', diaVencimento: '' }],
+      : [{ nome: '', dataInicio: '', honorarioMensal: '', diaVencimento: '', periodicidade: 'mensal' }],
     certidoes: cliente?.certidoes?.map(c => ({ ...c, vencimento: isoData(c.vencimento) })) || [],
     observacoes: cliente?.observacoes || '',
   })
@@ -88,17 +133,28 @@ function FormCliente({ cliente, fechar, onSalvo }) {
   const setEnd = (k, v) => setForm(f => ({ ...f, endereco: { ...f.endereco, [k]: v } }))
   const setSocio = (k, v) => setForm(f => ({ ...f, socio: { ...f.socio, [k]: v } }))
   const setSv = (i, k, v) => setForm(f => ({ ...f, servicosContratados: f.servicosContratados.map((s,j) => j===i ? {...s,[k]:v} : s) }))
-  const addSv = () => setForm(f => ({ ...f, servicosContratados: [...f.servicosContratados, { nome:'', dataInicio:'', honorarioMensal:'', diaVencimento:'' }] }))
+  const addSv = () => setForm(f => ({ ...f, servicosContratados: [...f.servicosContratados, { nome:'', dataInicio:'', honorarioMensal:'', diaVencimento:'', periodicidade:'mensal' }] }))
   const removeSv = (i) => setForm(f => ({ ...f, servicosContratados: f.servicosContratados.filter((_,j) => j!==i) }))
   const setCert = (i, k, v) => setForm(f => ({ ...f, certidoes: f.certidoes.map((c,j) => j===i ? {...c,[k]:v} : c) }))
   const addCert = () => setForm(f => ({ ...f, certidoes: [...f.certidoes, { tipo:'federal', vencimento:'', situacao:'regular' }] }))
   const removeCert = (i) => setForm(f => ({ ...f, certidoes: f.certidoes.filter((_,j) => j!==i) }))
+
+  const usarServicoExistente = (sv) => {
+    const honorarioNum = sv.honorarioPadrao ? Number(sv.honorarioPadrao) : 0
+    // Salvar como decimal com 2 casas (ex: "1500.00") — o display vai converter pra "1.500,00"
+    const honorario = honorarioNum > 0 ? honorarioNum.toFixed(2) : ''
+    const novoSv = { nome: sv.nome, dataInicio: '', honorarioMensal: honorario, diaVencimento: '', periodicidade: sv.periodicidade || 'mensal' }
+    const semVazios = form.servicosContratados.filter(s => s.nome.trim())
+    setForm(f => ({ ...f, servicosContratados: [...semVazios, novoSv] }))
+    setMostrarListaServicos(false)
+  }
 
   const salvar = async () => {
     if (!form.razaoSocial.trim()) return setErro('Razão social é obrigatória.')
     if (!form.porte) return setErro('Porte é obrigatório.')
     if (!form.regime) return setErro('Regime tributário é obrigatório.')
     if (!form.servicosContratados.some(s => s.nome.trim())) return setErro('Informe ao menos um serviço contratado.')
+    if (form.email && !form.email.includes('@')) return setErro('E-mail inválido.')
     setErro(''); setCarregando(true)
     try {
       if (cliente?._id) { await api.put(`/clientes/${cliente._id}`, form); mostrar('Cliente atualizado!', 'sucesso') }
@@ -111,30 +167,75 @@ function FormCliente({ cliente, fechar, onSalvo }) {
   const abas = ['basico','contato','socio','servicos','obs']
   const abaLabels = { basico:'Dados básicos', contato:'Contato', socio:'Sócio', servicos:'Serviços', obs:'Observações' }
 
-  return createPortal(
-    <div style={s.overlay} onClick={fechar}>
-      <div style={{ ...s.modal, maxWidth: '640px' }} onClick={e => e.stopPropagation()}>
-        <div style={s.modalTopo}>
-          <p style={s.modalTit}>{cliente ? 'Editar cliente' : 'Novo cliente'}</p>
-          <button style={s.btnX} onClick={fechar}>✕</button>
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0 }}>
+      {/* Cabeçalho */}
+      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '8px' }}>
+        <div>
+          <h1 style={{ fontSize: '1.5rem', fontWeight: '700', color: 'var(--texto)', margin: 0, letterSpacing: '-0.03em', fontFamily: 'Inter, sans-serif' }}>{cliente ? 'Editar cliente' : 'Novo cliente'}</h1>
+          <p style={{ fontSize: '0.82rem', color: 'var(--texto-apagado)', marginTop: '4px', fontFamily: 'Inter, sans-serif' }}>{abaLabels[aba]}</p>
         </div>
-        <div style={{ display: 'flex', borderBottom: '1px solid var(--borda)', padding: '0 24px', gap: '4px', overflowX: 'auto', flexShrink: 0 }}>
-          {abas.map(a => (
-            <button key={a} onClick={() => setAba(a)} style={{ background:'none', border:'none', borderBottom:`2px solid ${aba===a?'var(--verde)':'transparent'}`, color: aba===a?'var(--verde)':'var(--texto-apagado)', padding:'10px 12px', fontFamily:'Inter,sans-serif', fontSize:'0.82rem', fontWeight: aba===a?'600':'400', cursor:'pointer', whiteSpace:'nowrap' }}>
-              {abaLabels[a]}
-            </button>
-          ))}
-        </div>
-        <div style={{ padding:'24px', overflowY:'auto', flex:1, display:'flex', flexDirection:'column', gap:'16px' }}>
+        <button style={{ ...s.btnX, marginTop: '4px' }} onClick={fechar} title="Cancelar">✕</button>
+      </div>
+
+      {/* Abas no topo */}
+      <div style={{ display: 'flex', borderBottom: '1px solid var(--borda)', gap: '4px', marginBottom: '28px', overflowX: 'auto', flexShrink: 0 }}>
+        {abas.map(a => (
+          <button key={a} onClick={() => setAba(a)} style={{ background:'none', border:'none', borderBottom:`2px solid ${aba===a?'var(--verde)':'transparent'}`, color: aba===a?'var(--verde)':'var(--texto-apagado)', padding:'10px 14px', fontFamily:'Inter,sans-serif', fontSize:'0.85rem', fontWeight: aba===a?'600':'400', cursor:'pointer', whiteSpace:'nowrap' }}>
+            {abaLabels[a]}
+          </button>
+        ))}
+      </div>
+
+      <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '20px', paddingBottom: '24px' }}>
           {erro && <p style={s.erro}>{erro}</p>}
           {aba==='basico' && <>
-            <div style={s.g2}><div style={s.campo}><label style={s.lbl}>Razão social *</label><input style={s.inp} value={form.razaoSocial} onChange={e=>set('razaoSocial',e.target.value)} placeholder="Nome oficial da empresa" /></div><div style={s.campo}><label style={s.lbl}>Nome fantasia</label><input style={s.inp} value={form.nomeFantasia} onChange={e=>set('nomeFantasia',e.target.value)} placeholder="Como é conhecido" /></div></div>
-            <div style={s.g2}><div style={s.campo}><label style={s.lbl}>CNPJ</label><input style={s.inp} value={form.cnpj} onChange={e=>set('cnpj',mascaraCNPJ(e.target.value))} placeholder="00.000.000/0000-00" /></div><div style={s.campo}><label style={s.lbl}>Data de abertura</label><input style={s.inp} type="date" value={form.dataAbertura} onChange={e=>set('dataAbertura',e.target.value)} /></div></div>
-            <div style={s.g2}><div style={s.campo}><label style={s.lbl}>Porte *</label><select style={s.inp} value={form.porte} onChange={e=>set('porte',e.target.value)}><option value="">Selecione</option>{PORTES.map(p=><option key={p.value} value={p.value}>{p.label}</option>)}</select></div><div style={s.campo}><label style={s.lbl}>Regime tributário *</label><select style={s.inp} value={form.regime} onChange={e=>set('regime',e.target.value)}><option value="">Selecione</option>{REGIMES.map(r=><option key={r.value} value={r.value}>{r.label}</option>)}</select></div></div>
-            <div style={s.g2}><div style={s.campo}><label style={s.lbl}>CNAE principal</label><input style={s.inp} value={form.cnaePrincipal} onChange={e=>set('cnaePrincipal',e.target.value)} placeholder="Ex: 6920-6/01" /></div><div style={s.campo}><label style={s.lbl}>Status</label><select style={s.inp} value={form.status} onChange={e=>set('status',e.target.value)}>{STATUS_OPTS.map(st=><option key={st.value} value={st.value}>{st.label}</option>)}</select></div></div>
+            {/* Razão social — campo grande e destaque */}
+            <div style={s.campo}>
+              <label style={s.lbl}>Razão social *</label>
+              <input style={{ ...s.inp, fontSize: '1.1rem', padding: '14px 16px' }} value={form.razaoSocial} onChange={e=>set('razaoSocial',e.target.value)} placeholder="Nome oficial da empresa" autoFocus />
+            </div>
+            {/* CNPJ + Nome fantasia + Data abertura */}
+            <div style={{ display:'flex', gap:'16px', alignItems:'flex-start' }}>
+              <div style={{ ...s.campo, flex: '0 0 200px' }}><label style={s.lbl}>CNPJ *</label><input style={{ ...s.inp, letterSpacing: '0.5px' }} value={form.cnpj} onChange={e=>set('cnpj',mascaraCNPJ(e.target.value))} placeholder="00.000.000/0000-00" /></div>
+              <div style={{ ...s.campo, flex: 1 }}><label style={s.lbl}>Nome fantasia</label><input style={s.inp} value={form.nomeFantasia} onChange={e=>set('nomeFantasia',e.target.value)} placeholder="Como é conhecido" /></div>
+              <div style={{ ...s.campo, flex: '0 0 160px' }}><label style={s.lbl}>Data de abertura</label><input style={s.inp} type="date" value={form.dataAbertura} onChange={e=>set('dataAbertura',e.target.value)} /></div>
+            </div>
+            <div style={{ display:'flex', gap:'12px', flexWrap:'wrap' }}>
+              <div style={{ ...s.campo, flex: '1 1 140px' }}>
+                <label style={s.lbl}>Porte *</label>
+                <select style={s.inp} value={form.porte} onChange={e=>{
+                  const p = e.target.value
+                  set('porte', p)
+                  if (p === 'mei') set('regime', 'mei')
+                }}>
+                  <option value="">Selecione</option>
+                  {PORTES.map(p=><option key={p.value} value={p.value}>{p.label}</option>)}
+                </select>
+              </div>
+              <div style={{ ...s.campo, flex: '1 1 200px' }}>
+                <label style={s.lbl}>Regime tributário *</label>
+                {form.porte === 'mei' ? (
+                  <div style={{ ...s.inp, color:'var(--texto-apagado)', background:'rgba(255,255,255,0.03)', display:'flex', alignItems:'center' }}>MEI</div>
+                ) : (
+                  <select style={s.inp} value={form.regime} onChange={e=>set('regime',e.target.value)}>
+                    <option value="">Selecione</option>
+                    {REGIMES.filter(r=>r.value!=='mei').map(r=><option key={r.value} value={r.value}>{r.label}</option>)}
+                  </select>
+                )}
+              </div>
+              <div style={{ ...s.campo, flex: '1 1 180px' }}>
+                <label style={s.lbl}>Atividade principal</label>
+                <select style={s.inp} value={form.atividade} onChange={e=>set('atividade',e.target.value)}>
+                  <option value="">Selecione</option>
+                  {ATIVIDADES.map(a=><option key={a.value} value={a.value}>{a.label}</option>)}
+                </select>
+              </div>
+            </div>
+            <div style={s.g2}><div style={s.campo}><label style={s.lbl}>CNAE principal</label><input style={s.inp} value={form.cnaePrincipal} onChange={e=>set('cnaePrincipal',mascaraCNAE(e.target.value))} placeholder="Ex: 6920-6/01" /></div><div style={s.campo}><label style={s.lbl}>Status</label><select style={s.inp} value={form.status} onChange={e=>set('status',e.target.value)}>{STATUS_OPTS.map(st=><option key={st.value} value={st.value}>{st.label}</option>)}</select></div></div>
           </>}
           {aba==='contato' && <>
-            <div style={s.g2}><div style={s.campo}><label style={s.lbl}>Telefone</label><input style={s.inp} value={form.telefone} onChange={e=>set('telefone',e.target.value)} placeholder="(31) 99999-9999" /></div><div style={s.campo}><label style={s.lbl}>E-mail</label><input style={s.inp} value={form.email} onChange={e=>set('email',e.target.value)} placeholder="contato@empresa.com" /></div></div>
+            <div style={s.g2}><div style={s.campo}><label style={s.lbl}>Telefone</label><input style={s.inp} value={form.telefone} onChange={e=>set('telefone',mascaraTelefone(e.target.value))} placeholder="(31) 99999-9999" /></div><div style={s.campo}><label style={s.lbl}>E-mail</label><input style={s.inp} value={form.email} onChange={e=>set('email',e.target.value)} placeholder="contato@empresa.com" onBlur={e=>{ if(e.target.value && !e.target.value.includes('@')) set('email','') }} /></div></div>
             <div style={s.g2}><div style={s.campo}><label style={s.lbl}>CEP</label><input style={s.inp} value={form.endereco.cep} onChange={e=>setEnd('cep',mascaraCEP(e.target.value))} placeholder="00000-000" /></div><div style={s.campo}><label style={s.lbl}>Estado</label><input style={s.inp} value={form.endereco.estado} onChange={e=>setEnd('estado',e.target.value.toUpperCase().slice(0,2))} placeholder="MG" /></div></div>
             <div style={s.campo}><label style={s.lbl}>Logradouro</label><input style={s.inp} value={form.endereco.logradouro} onChange={e=>setEnd('logradouro',e.target.value)} placeholder="Rua, Avenida..." /></div>
             <div style={s.g2}><div style={s.campo}><label style={s.lbl}>Número</label><input style={s.inp} value={form.endereco.numero} onChange={e=>setEnd('numero',e.target.value)} /></div><div style={s.campo}><label style={s.lbl}>Complemento</label><input style={s.inp} value={form.endereco.complemento} onChange={e=>setEnd('complemento',e.target.value)} /></div></div>
@@ -145,16 +246,54 @@ function FormCliente({ cliente, fechar, onSalvo }) {
             <div style={s.g2}><div style={s.campo}><label style={s.lbl}>Telefone</label><input style={s.inp} value={form.socio.telefone} onChange={e=>setSocio('telefone',e.target.value)} /></div><div style={s.campo}><label style={s.lbl}>E-mail</label><input style={s.inp} value={form.socio.email} onChange={e=>setSocio('email',e.target.value)} /></div></div>
           </>}
           {aba==='servicos' && <>
-            <p style={{ fontSize:'0.82rem', color:'var(--texto-apagado)' }}>Ao menos um serviço é obrigatório.</p>
+            <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', flexWrap:'wrap', gap:'8px' }}>
+              <p style={{ fontSize:'0.82rem', color:'var(--texto-apagado)', margin:0 }}>Ao menos um serviço é obrigatório.</p>
+              {servicosCadastrados.length > 0 && (
+                <div style={{ position:'relative' }}>
+                  <button onClick={()=>setMostrarListaServicos(v=>!v)} style={{ background:'none', border:'1px solid var(--borda)', borderRadius:'8px', color:'var(--verde)', padding:'6px 12px', cursor:'pointer', fontFamily:'Inter,sans-serif', fontSize:'0.78rem', fontWeight:'600', display:'flex', alignItems:'center', gap:'6px' }}>
+                    📋 Usar serviço existente ▾
+                  </button>
+                  {mostrarListaServicos && (
+                    <div style={{ position:'absolute', right:0, top:'calc(100% + 6px)', background:'var(--card)', border:'1px solid var(--borda)', borderRadius:'10px', boxShadow:'0 8px 24px rgba(0,0,0,0.4)', zIndex:10, minWidth:'220px', overflow:'hidden' }}>
+                      {servicosCadastrados.map(sv => (
+                        <button key={sv._id} onClick={()=>usarServicoExistente(sv)} style={{ display:'flex', flexDirection:'column', width:'100%', padding:'10px 14px', background:'none', border:'none', borderBottom:'1px solid var(--borda)', cursor:'pointer', textAlign:'left', fontFamily:'Inter,sans-serif' }}
+                          onMouseEnter={e=>e.currentTarget.style.background='var(--input)'}
+                          onMouseLeave={e=>e.currentTarget.style.background='none'}>
+                          <span style={{ fontSize:'0.85rem', fontWeight:'600', color:'var(--texto)' }}>{sv.nome}</span>
+                          <span style={{ fontSize:'0.72rem', color:'var(--texto-apagado)' }}>{labelPeriodicidade(sv.periodicidade)}{sv.honorarioPadrao > 0 ? ` · R$ ${Number(sv.honorarioPadrao).toLocaleString('pt-BR',{minimumFractionDigits:2})}` : ''}</span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
             {form.servicosContratados.map((sv,i) => (
-              <div key={i} style={{ background:'var(--input)', border:'1px solid var(--borda)', borderRadius:'12px', padding:'16px', display:'flex', flexDirection:'column', gap:'12px' }}>
+              <div key={i} style={{ border:'1px solid var(--borda)', borderRadius:'12px', padding:'16px', display:'flex', flexDirection:'column', gap:'12px' }}>
                 <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center' }}>
                   <p style={{ fontSize:'0.82rem', fontWeight:'600', color:'var(--texto)', margin:0 }}>Serviço {i+1}</p>
                   {form.servicosContratados.length > 1 && <button onClick={()=>removeSv(i)} style={{ background:'none', border:'none', color:'#f87171', cursor:'pointer', fontSize:'12px' }}>Remover</button>}
                 </div>
                 <div style={s.campo}><label style={s.lbl}>Nome do serviço *</label><input style={s.inp} value={sv.nome} onChange={e=>setSv(i,'nome',e.target.value)} placeholder="Ex: Contabilidade, Fiscal, DP..." /></div>
-                <div style={s.g2}><div style={s.campo}><label style={s.lbl}>Data início</label><input style={s.inp} type="date" value={sv.dataInicio} onChange={e=>setSv(i,'dataInicio',e.target.value)} /></div><div style={s.campo}><label style={s.lbl}>Honorário mensal (R$)</label><input style={s.inp} type="number" value={sv.honorarioMensal} onChange={e=>setSv(i,'honorarioMensal',e.target.value)} placeholder="0,00" /></div></div>
-                <div style={s.campo}><label style={s.lbl}>Dia de vencimento</label><input style={s.inp} type="number" min="1" max="31" value={sv.diaVencimento} onChange={e=>setSv(i,'diaVencimento',e.target.value)} placeholder="Ex: 10" /></div>
+                <div style={s.g2}>
+                  <div style={s.campo}><label style={s.lbl}>Periodicidade</label><select style={s.inp} value={sv.periodicidade||'mensal'} onChange={e=>setSv(i,'periodicidade',e.target.value)}>{[{value:'mensal',label:'Mensal'},{value:'trimestral',label:'Trimestral'},{value:'semestral',label:'Semestral'},{value:'anual',label:'Anual'},{value:'esporadico',label:'Esporádico'}].map(p=><option key={p.value} value={p.value}>{p.label}</option>)}</select></div>
+                  <div style={s.campo}><label style={s.lbl}>Honorário (R$)</label><input style={s.inp} value={(() => {
+                      const v = sv.honorarioMensal;
+                      if (!v && v !== 0) return '';
+                      // Se vier como "1500.00" (do serviço existente), mostrar direto como moeda
+                      const n = parseFloat(String(v).replace(',','.'));
+                      if (isNaN(n)) return '';
+                      return n.toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2});
+                    })()} onChange={e=>{
+                      // Input centavos: digita 10000 → salva 100.00
+                      const nums = e.target.value.replace(/\D/g,'');
+                      setSv(i, 'honorarioMensal', nums ? (parseInt(nums,10)/100).toFixed(2) : '');
+                    }} placeholder="0,00" /></div>
+                </div>
+                <div style={s.g2}>
+                  <div style={s.campo}><label style={s.lbl}>Data início</label><input style={s.inp} type="date" value={sv.dataInicio} onChange={e=>setSv(i,'dataInicio',e.target.value)} /></div>
+                  <div style={s.campo}><label style={s.lbl}>Dia de vencimento</label><input style={s.inp} type="number" min="1" max="31" value={sv.diaVencimento} onChange={e=>setSv(i,'diaVencimento',e.target.value)} placeholder="Ex: 10" /></div>
+                </div>
               </div>
             ))}
             <button onClick={addSv} style={{ background:'none', border:'1px dashed var(--borda)', borderRadius:'10px', color:'var(--texto-apagado)', padding:'10px', cursor:'pointer', fontFamily:'Inter,sans-serif', fontSize:'0.82rem' }}>+ Adicionar serviço</button>
@@ -162,7 +301,7 @@ function FormCliente({ cliente, fechar, onSalvo }) {
           {aba==='certidoes' && <>
             <p style={{ fontSize:'0.82rem', color:'var(--texto-apagado)' }}>Registre as certidões e seus vencimentos.</p>
             {form.certidoes.map((c,i) => (
-              <div key={i} style={{ background:'var(--input)', border:'1px solid var(--borda)', borderRadius:'12px', padding:'16px', display:'flex', flexDirection:'column', gap:'12px' }}>
+              <div key={i} style={{ border:'1px solid var(--borda)', borderRadius:'12px', padding:'16px', display:'flex', flexDirection:'column', gap:'12px' }}>
                 <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center' }}>
                   <p style={{ fontSize:'0.82rem', fontWeight:'600', color:'var(--texto)', margin:0 }}>Certidão {i+1}</p>
                   <button onClick={()=>removeCert(i)} style={{ background:'none', border:'none', color:'#f87171', cursor:'pointer', fontSize:'12px' }}>Remover</button>
@@ -176,14 +315,15 @@ function FormCliente({ cliente, fechar, onSalvo }) {
           {aba==='obs' && (
             <div style={s.campo}><label style={s.lbl}>Observações internas</label><textarea style={{ ...s.inp, minHeight:'160px', resize:'vertical' }} value={form.observacoes} onChange={e=>set('observacoes',e.target.value)} placeholder="Notas internas, particularidades do cliente..." /></div>
           )}
-        </div>
-        <div style={s.modalRodape}>
-          <button style={s.btnCanc} onClick={fechar}>Cancelar</button>
-          <button style={s.btnSalv} onClick={salvar} disabled={carregando}>{carregando ? 'Salvando...' : cliente ? 'Salvar alterações' : 'Cadastrar cliente'}</button>
-        </div>
       </div>
-    </div>,
-    document.body
+
+      {/* Rodapé */}
+      {erro && <p style={{ ...s.erro, marginBottom: '8px' }}>{erro}</p>}
+      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', paddingTop: '16px', borderTop: '1px solid var(--borda)', flexShrink: 0 }}>
+        <button style={s.btnCanc} onClick={fechar}>Cancelar</button>
+        <button style={s.btnSalv} onClick={salvar} disabled={carregando}>{carregando ? 'Salvando...' : cliente ? 'Salvar alterações' : 'Cadastrar cliente'}</button>
+      </div>
+    </div>
   )
 }
 
@@ -385,7 +525,11 @@ export default function Clientes() {
     c.cnpj?.includes(busca)
   )
 
+  // Tela de detalhe
   if (detalheId) return <TelaDetalhe clienteId={detalheId} voltar={()=>setDetalheId(null)} onAtualizado={carregar} />
+
+  // Formulário de novo/editar — substitui a tela atual
+  if (formAberto) return <FormCliente fechar={()=>setFormAberto(false)} onSalvo={carregar} />
 
   return (
     <div>
@@ -410,7 +554,6 @@ export default function Clientes() {
           {filtrados.map(c => <CardCliente key={c._id} cliente={c} onClick={()=>setDetalheId(c._id)} />)}
         </div>
       )}
-      {formAberto && <FormCliente fechar={()=>setFormAberto(false)} onSalvo={carregar} />}
     </div>
   )
 }

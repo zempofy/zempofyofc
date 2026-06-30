@@ -13,6 +13,7 @@ import { useToast } from '../components/Toast'
 import Implantacao from '../components/Implantacao'
 import ModelosOnboarding from '../components/ModelosOnboarding'
 import BancoAtividades from '../components/BancoAtividades'
+import Servicos from '../components/Servicos'
 import Clientes from '../components/Clientes'
 import Setores from '../components/Setores'
 
@@ -660,38 +661,17 @@ export default function DashboardFuncionario() {
 
   // Sidebar dinâmico baseado nas permissões do colaborador
   // Verifica se tem algum item na seção Escritório pra mostrar o separador
-  const temEscritorio = temPermissao('gerenciarEquipe') || temPermissao('gerenciarOnboarding') || temPermissao('gerenciarClientes')
-
   const menuItens = [
     { id: 'inicio', label: 'Início', icone: <Icone.Home size={16} /> },
 
-    // Separador Escritório — só aparece se tiver alguma permissão
-    ...(temEscritorio ? [{ id: '__sep_escritorio', separador: true, label: 'Escritório' }] : []),
+    // Escritório — só Implantação e Clientes no sidebar (configs vão pelo painel de configurações)
+    ...(temPermissao('criarImplantacoes') || temPermissao('gerenciarOnboarding') ? [
+      { id: '__sep_escritorio', separador: true, label: 'Escritório' },
+      { id: 'implantacao', label: 'Onboarding', icone: <Icone.ClipboardList size={16} /> },
+    ] : []),
 
-    // Gestão — só se tiver permissão
-    ...(temPermissao('gerenciarEquipe') ? [{
-      id: 'gestao', label: 'Gestão', icone: <Icone.UsersThree size={16} />,
-      subItens: [
-        ...(temPermissao('gerenciarMembros') ? [{ id: 'equipe', label: 'Equipe' }] : []),
-        ...(temPermissao('gerenciarSetores') ? [{ id: 'setores', label: 'Setores' }] : []),
-      ].filter(Boolean)
-    }] : []),
-
-    // Onboarding — baseado nas subpermissões
-    ...(temPermissao('gerenciarOnboarding') ? [{
-      id: 'onboarding', label: 'Onboarding', icone: <Icone.ClipboardList size={16} />,
-      subItens: [
-        // Implantação: visível se tiver permissão de criar implantações ou gerenciarOnboarding geral
-        ...(temPermissao('criarImplantacoes') || (!temPermissao('criarImplantacoes') && !temPermissao('gerenciarModelos') && !temPermissao('gerenciarBancoAtividades')) ? [{ id: 'implantacao', label: 'Implantação' }] : []),
-        // Modelos: só se tiver permissão específica
-        ...(temPermissao('gerenciarModelos') ? [{ id: 'modelos', label: 'Modelos' }] : []),
-        // Banco de atividades: só se tiver permissão específica
-        ...(temPermissao('gerenciarBancoAtividades') ? [{ id: 'checklist', label: 'Banco de atividades' }] : []),
-      ].filter(Boolean)
-    }] : []),
-
-    // Clientes — só se tiver permissão
     ...(temPermissao('gerenciarClientes') ? [
+      ...(!temPermissao('criarImplantacoes') && !temPermissao('gerenciarOnboarding') ? [{ id: '__sep_escritorio', separador: true, label: 'Escritório' }] : []),
       { id: 'clientes', label: 'Clientes', icone: <Icone.Users size={16} /> }
     ] : []),
 
@@ -728,6 +708,7 @@ export default function DashboardFuncionario() {
       {pagina === 'clientes' && <Clientes />}
       {pagina === 'equipe' && <PaginaEquipeColaborador />}
       {pagina === 'setores' && <Setores funcionarios={[]} />}
+      {pagina === 'servicos' && <Servicos />}
       {pagina === 'onboarding' && <Implantacao />}
       {pagina === 'chat' && <Chat setPagina={setPagina} />}
       {pagina === 'anotacoes' && <Anotacoes />}

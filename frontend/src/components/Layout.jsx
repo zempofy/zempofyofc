@@ -554,15 +554,49 @@ export default function Layout({ children, menuItens, paginaAtual, setPagina }) 
 
           <div style={styles.topbarSep} />
 
-          {/* Avatar compacto */}
-          <button style={styles.avatarBtn} onClick={() => setPainelAberto(true)} title="Minha conta">
-            <Avatar nome={usuario?.nome} foto={usuario?.avatar} size={30} fontSize={13} />
-            <div style={styles.avatarInfo}>
-              <span style={styles.avatarNome}>{usuario?.nome}</span>
-              <span style={styles.avatarCargo}>{usuario?.cargo === 'admin' ? 'Titular' : 'Colaborador'}</span>
-            </div>
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.5)" strokeWidth="2" strokeLinecap="round"><polyline points="6 9 12 15 18 9"/></svg>
-          </button>
+          {/* Avatar compacto com dropdown */}
+          <div style={{ position: 'relative' }}>
+            <button style={styles.avatarBtn} onClick={() => setPainelAberto(v => !v)} title="Minha conta">
+              <Avatar nome={usuario?.nome} foto={usuario?.avatar} size={30} fontSize={13} />
+              <div style={styles.avatarInfo}>
+                <span style={styles.avatarNome}>{usuario?.nome}</span>
+                <span style={styles.avatarCargo}>{usuario?.cargo === 'admin' ? 'Titular' : 'Colaborador'}</span>
+              </div>
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.5)" strokeWidth="2" strokeLinecap="round"><polyline points="6 9 12 15 18 9"/></svg>
+            </button>
+
+            {/* Dropdown simples — só nome e sair */}
+            {painelAberto && (
+              <>
+                <div onClick={() => setPainelAberto(false)} style={{ position: 'fixed', inset: 0, zIndex: 90 }} />
+                <div style={{
+                  position: 'absolute', top: 'calc(100% + 8px)', right: 0,
+                  background: '#18181b', border: '1px solid #27272a', borderRadius: '12px',
+                  minWidth: '200px', boxShadow: '0 12px 32px rgba(0,0,0,0.5)', zIndex: 91,
+                  overflow: 'hidden',
+                }}>
+                  <div style={{ padding: '14px 16px', borderBottom: '1px solid #27272a' }}>
+                    <p style={{ fontSize: '0.85rem', fontWeight: '600', color: '#fff', margin: 0, fontFamily: 'Inter, sans-serif' }}>{usuario?.nome}</p>
+                    <p style={{ fontSize: '0.72rem', color: 'rgba(255,255,255,0.4)', margin: '2px 0 0', fontFamily: 'Inter, sans-serif' }}>{usuario?.cargo === 'admin' ? 'Titular' : 'Colaborador'}</p>
+                    <p style={{ fontSize: '0.65rem', color: 'rgba(255,255,255,0.25)', margin: '4px 0 0', fontFamily: 'Inter, sans-serif', letterSpacing: '0.3px' }}>ID #{usuario?.id?.slice(-8).toUpperCase() || '--------'}</p>
+                  </div>
+                  <button
+                    onClick={() => { setPainelAberto(false); sair() }}
+                    style={{
+                      display: 'flex', alignItems: 'center', gap: '8px', width: '100%',
+                      padding: '11px 16px', background: 'none', border: 'none',
+                      color: '#f87171', fontSize: '0.82rem', cursor: 'pointer',
+                      fontFamily: 'Inter, sans-serif', fontWeight: '500',
+                    }}
+                    onMouseEnter={e => e.currentTarget.style.background = 'rgba(248,113,113,0.08)'}
+                    onMouseLeave={e => e.currentTarget.style.background = 'none'}
+                  >
+                    <Icone.LogOut size={15} /> Sair
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
         </div>
       </header>
 
@@ -720,18 +754,6 @@ export default function Layout({ children, menuItens, paginaAtual, setPagina }) 
             Preferências
           </button>
         </div>
-      )}
-
-      {/* Painel de perfil */}
-      {painelAberto && (
-        <PainelPerfil
-          usuario={usuario}
-          sair={sair}
-          fechar={() => setPainelAberto(false)}
-          setPagina={setPagina}
-          setModalAcessoExterno={setModalAcesso}
-          setModalConfigExterno={setModalConfig}
-        />
       )}
 
       {modalAcesso && (

@@ -16,6 +16,7 @@ const clienteSchema = new mongoose.Schema({
   // Dados complementares
   dataAbertura: { type: Date, default: null },
   cnaePrincipal: { type: String, default: '' },
+  atividade: { type: String, default: '' },
 
   // Contato
   telefone: { type: String, default: '' },

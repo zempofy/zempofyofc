@@ -18,6 +18,8 @@ import ModelosOnboarding from '../components/ModelosOnboarding'
 import Setores from '../components/Setores'
 import BancoAtividades from '../components/BancoAtividades'
 import Clientes from '../components/Clientes'
+import Servicos from '../components/Servicos'
+import Obrigacoes from '../components/Obrigacoes'
 
 // ============ PÁGINAS INTERNAS ============
 
@@ -1883,6 +1885,11 @@ export default function DashboardAdmin() {
       { id: 'clientes', label: 'Clientes', icone: <Icone.Users size={16} /> }
     ] : []),
 
+    // Obrigações
+    ...(isTitular || temPermissao('gerenciarClientes') ? [
+      { id: 'obrigacoes', label: 'Obrigações', icone: <Icone.CheckCircle size={16} /> }
+    ] : []),
+
     // Separador — Pessoal
     { id: '__sep_pessoal', separador: true, label: 'Pessoal' },
 
@@ -1921,6 +1928,8 @@ export default function DashboardAdmin() {
     if (pagina === 'modelos') return <ModelosOnboarding />
     if (pagina === 'checklist') return <BancoAtividades />
     if (pagina === 'setores') return <Setores funcionarios={funcionarios} />
+    if (pagina === 'servicos') return <Servicos />
+    if (pagina === 'obrigacoes') return <Obrigacoes />
     if (pagina === 'plano') return <PaginaEmDesenvolvimento titulo="Meu plano" descricao="O gerenciamento de planos e assinaturas estará disponível em breve. Por enquanto, entre em contato para mais informações." />
     if (pagina === 'servicos') return <PaginaEmDesenvolvimento titulo="Serviços" descricao="O cadastro de serviços contratados pelos clientes estará disponível em breve." />
   }

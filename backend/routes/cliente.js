@@ -44,9 +44,13 @@ router.get('/:id', autenticar, async (req, res) => {
 router.post('/', autenticar, async (req, res) => {
   const { razaoSocial, cnpj, regime, porte, servicosContratados } = req.body;
   if (!razaoSocial?.trim()) return res.status(400).json({ erro: 'Razão social é obrigatória.' });
-  if (!porte) return res.status(400).json({ erro: 'Porte é obrigatório.' });
-  if (!regime) return res.status(400).json({ erro: 'Regime tributário é obrigatório.' });
-  if (!servicosContratados?.length) return res.status(400).json({ erro: 'Informe ao menos um serviço contratado.' });
+  // Clientes criados via onboarding (origem: 'onboarding') não exigem todos os campos
+  const viaOnboarding = req.body.origem === 'onboarding';
+  if (!viaOnboarding) {
+    if (!porte) return res.status(400).json({ erro: 'Porte é obrigatório.' });
+    if (!regime) return res.status(400).json({ erro: 'Regime tributário é obrigatório.' });
+    if (!servicosContratados?.length) return res.status(400).json({ erro: 'Informe ao menos um serviço contratado.' });
+  }
   try {
     if (cnpj) {
       const cnpjLimpo = cnpj.replace(/\D/g, '');
