@@ -13,6 +13,7 @@ import { useToast } from '../components/Toast'
 import Implantacao from '../components/Implantacao'
 import ModelosOnboarding from '../components/ModelosOnboarding'
 import BancoAtividades from '../components/BancoAtividades'
+import Obrigacoes from '../components/Obrigacoes'
 import Servicos from '../components/Servicos'
 import Clientes from '../components/Clientes'
 import Setores from '../components/Setores'
@@ -709,6 +710,7 @@ export default function DashboardFuncionario() {
       {pagina === 'equipe' && <PaginaEquipeColaborador />}
       {pagina === 'setores' && <Setores funcionarios={[]} />}
       {pagina === 'servicos' && <Servicos />}
+      {pagina === 'obrigacoes' && <Obrigacoes />}
       {pagina === 'onboarding' && <Implantacao />}
       {pagina === 'chat' && <Chat setPagina={setPagina} />}
       {pagina === 'anotacoes' && <Anotacoes />}

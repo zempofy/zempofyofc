@@ -11,7 +11,7 @@ router.get('/', autenticar, async (req, res) => {
   try {
     const clientes = await Cliente.find({ empresa: req.usuario.empresa._id })
       .populate('criadoPor', 'nome')
-      .sort({ criadoEm: -1 });
+      .populate('setores', 'nome cor').sort({ criadoEm: -1 });
     res.json(clientes);
   } catch (err) {
     res.status(500).json({ erro: 'Erro ao buscar clientes.' });
@@ -22,7 +22,7 @@ router.get('/', autenticar, async (req, res) => {
 router.get('/:id', autenticar, async (req, res) => {
   try {
     const cliente = await Cliente.findOne({ _id: req.params.id, empresa: req.usuario.empresa._id })
-      .populate('criadoPor', 'nome');
+      .populate('criadoPor', 'nome').populate('setores', 'nome cor');
     if (!cliente) return res.status(404).json({ erro: 'Cliente não encontrado.' });
 
     // Buscar onboardings vinculados ao CNPJ do cliente
@@ -98,3 +98,41 @@ router.delete('/:id', autenticar, async (req, res) => {
 });
 
 module.exports = router;
+
+// POST /api/clientes/importar — importar lista de clientes
+router.post('/importar', autenticar, async (req, res) => {
+  try {
+    const { clientes } = req.body;
+    if (!clientes?.length) return res.status(400).json({ erro: 'Nenhum cliente para importar.' });
+
+    const resultados = { importados: 0, ignorados: 0, erros: [] };
+
+    for (const c of clientes) {
+      try {
+        if (!c.razaoSocial?.trim()) { resultados.ignorados++; continue; }
+        // Verificar duplicata por CNPJ
+        if (c.cnpj) {
+          const cnpjLimpo = c.cnpj.replace(/\D/g, '');
+          const existe = await Cliente.findOne({ empresa: req.usuario.empresa._id, cnpj: { $regex: cnpjLimpo } });
+          if (existe) { resultados.ignorados++; resultados.erros.push(`${c.razaoSocial}: CNPJ já cadastrado`); continue; }
+        }
+        await Cliente.create({
+          ...c,
+          empresa: req.usuario.empresa._id,
+          criadoPor: req.usuario._id,
+          status: c.status || 'ativo',
+          servicosContratados: [],
+          socios: c.socios || [],
+        });
+        resultados.importados++;
+      } catch (err) {
+        resultados.erros.push(`${c.razaoSocial}: ${err.message}`);
+        resultados.ignorados++;
+      }
+    }
+
+    res.json(resultados);
+  } catch (err) {
+    res.status(500).json({ erro: 'Erro ao importar clientes.' });
+  }
+});

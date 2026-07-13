@@ -32,12 +32,13 @@ const clienteSchema = new mongoose.Schema({
   },
 
   // Sócio/Responsável
-  socio: {
+  socios: [{
     nome: { type: String, default: '' },
     cpf: { type: String, default: '' },
     telefone: { type: String, default: '' },
     email: { type: String, default: '' },
-  },
+    qualificacao: { type: String, default: '' },
+  }],
 
   // Serviços contratados — obrigatório
   servicosContratados: [{
@@ -55,6 +56,7 @@ const clienteSchema = new mongoose.Schema({
   }],
 
   // Observações internas
+  setores: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Setor' }],
   observacoes: { type: String, default: '' },
 });
 

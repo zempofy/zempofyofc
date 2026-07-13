@@ -26,4 +26,14 @@ router.get('/', autenticar, async (req, res) => {
   }
 });
 
+// GET /api/logs/count?depois=ISO_DATE — contar logs novos
+router.get('/count', autenticar, async (req, res) => {
+  try {
+    const filtro = { empresa: req.usuario.empresa._id }
+    if (req.query.depois) filtro.criadoEm = { $gt: new Date(req.query.depois) }
+    const total = await Log.countDocuments(filtro)
+    res.json({ total })
+  } catch { res.status(500).json({ total: 0 }) }
+})
+
 module.exports = router;

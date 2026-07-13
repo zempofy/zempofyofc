@@ -479,6 +479,8 @@ export default function Layout({ children, menuItens, paginaAtual, setPagina }) 
   const [naoLidasChat, setNaoLidasChat] = useState(0)
   const [painelConfigAberto, setPainelConfigAberto] = useState(false)
   const [paginaConfig, setPaginaConfig] = useState(null)
+  const [novasNotifs, setNovasNotifs] = useState(0)
+  const ultimaVezMuralKey = `zempofy_mural_visto_${usuario?.id}`
 
   useEffect(() => {
     const buscarNaoLidas = async () => {
@@ -532,11 +534,16 @@ export default function Layout({ children, menuItens, paginaAtual, setPagina }) 
           {/* Feed */}
           <button
             className="topbar-btn"
-            style={{ ...styles.btnTopbar, ...(paginaAtual === 'mural' ? styles.btnTopbarAtivo : {}) }}
-            onClick={() => setPagina('mural')}
+            style={{ ...styles.btnTopbar, ...(paginaAtual === 'mural' ? styles.btnTopbarAtivo : {}), position: 'relative' }}
+            onClick={() => { setPagina('mural'); localStorage.setItem(ultimaVezMuralKey, new Date().toISOString()); setNovasNotifs(0) }}
             title="Feed de atividades"
           >
             <IconeFeed />
+            {novasNotifs > 0 && (
+              <span style={{ position:'absolute', top:'-2px', right:'-2px', background:'#f87171', color:'#fff', fontSize:'9px', fontWeight:'700', borderRadius:'99px', minWidth:'16px', height:'16px', display:'flex', alignItems:'center', justifyContent:'center', padding:'0 3px', fontFamily:'Inter,sans-serif' }}>
+                {novasNotifs > 9 ? '9+' : novasNotifs}
+              </span>
+            )}
           </button>
 
           {/* Chat */}
