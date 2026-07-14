@@ -171,6 +171,83 @@ mongoose.connect(process.env.MONGODB_URI)
       if (clientesAntigos.length > 0) {
         console.log(`✅ Migração: ${clientesAntigos.length} cliente(s) migrado(s) para novo modelo.`);
       }
+
+      // Migração: marcar origem 'onboarding' em clientes que vieram de implantações
+      const Implantacao = require('./models/Implantacao');
+      const todasImplantacoes = await Implantacao.find({}).select('cnpj nomeCliente empresa etapas');
+      const cnpjsOnboarding = new Set(
+        todasImplantacoes.map(i => i.cnpj?.replace(/\D/g,'')).filter(Boolean)
+      );
+      const nomesOnboarding = new Set(
+        todasImplantacoes.map(i => (i.nomeCliente||'').toLowerCase().trim()).filter(Boolean)
+      );
+      const clientesSemOrigem = await Cliente.find({ origem: { $exists: false } });
+      for (const c of clientesSemOrigem) {
+        const cnpjLimpo = c.cnpj?.replace(/\D/g,'') || '';
+        const nomeLimpo = (c.razaoSocial || c.nome || '').toLowerCase().trim();
+        const veiuDoOnboarding = (cnpjLimpo && cnpjsOnboarding.has(cnpjLimpo)) || nomesOnboarding.has(nomeLimpo);
+        await Cliente.updateOne({ _id: c._id }, { $set: { origem: veiuDoOnboarding ? 'onboarding' : 'manual' } });
+      }
+      // Também atualizar clientes com origem errada
+      const clientesComOrigem = await Cliente.find({ origem: 'manual' });
+      let atualizados = 0;
+      for (const c of clientesComOrigem) {
+        const cnpjLimpo = c.cnpj?.replace(/\D/g,'') || '';
+        const nomeLimpo = (c.razaoSocial || c.nome || '').toLowerCase().trim();
+        if ((cnpjLimpo && cnpjsOnboarding.has(cnpjLimpo)) || nomesOnboarding.has(nomeLimpo)) {
+          await Cliente.updateOne({ _id: c._id }, { $set: { origem: 'onboarding' } });
+          atualizados++;
+        }
+      }
+      if (atualizados > 0) console.log(`✅ Migração: ${atualizados} cliente(s) marcado(s) como origem onboarding.`);
+
+      // Migração: criar clientes a partir de onboardings existentes
+      const implantacoes = await Implantacao.find({}).select('nomeCliente cnpj empresa criadoPor etapas');
+      let criados = 0;
+      for (const imp of implantacoes) {
+        const cnpjLimpo = imp.cnpj?.replace(/\D/g, '') || '';
+        // Verificar duplicata por CNPJ ou por nome (cobre clientes antigos sem CNPJ)
+        const existe = await Cliente.findOne({
+          empresa: imp.empresa,
+          $or: [
+            ...(cnpjLimpo ? [{ cnpj: { $regex: cnpjLimpo } }] : []),
+            { $or: [{ razaoSocial: imp.nomeCliente }, { nome: imp.nomeCliente }] }
+          ]
+        });
+        if (!existe) {
+          // Pegar setores das etapas do onboarding
+          const setoresIds = [...new Set(
+            (imp.etapas || []).map(e => e.setor?.toString()).filter(Boolean)
+          )];
+          await Cliente.create({
+            razaoSocial: imp.nomeCliente,
+            cnpj: imp.cnpj,
+            empresa: imp.empresa,
+            criadoPor: imp.criadoPor || imp.empresa,
+            status: 'ativo',
+            porte: '',
+            regime: '',
+            setores: setoresIds,
+            origem: 'onboarding',
+            servicosContratados: [],
+            socios: [],
+          });
+          criados++;
+        } else if (existe && imp.etapas?.length) {
+          // Atualizar setores do cliente existente com os do onboarding
+          const setoresIds = [...new Set(
+            imp.etapas.map(e => e.setor?.toString()).filter(Boolean)
+          )];
+          const setoresAtuais = existe.setores?.map(s => s.toString()) || [];
+          const novoSetores = [...new Set([...setoresAtuais, ...setoresIds])];
+          if (novoSetores.length > setoresAtuais.length) {
+            await Cliente.updateOne({ _id: existe._id }, { $set: { setores: novoSetores } });
+          }
+        }
+      }
+      if (criados > 0) {
+        console.log(`✅ Migração: ${criados} cliente(s) criado(s) a partir de onboardings existentes.`);
+      }
     } catch (err) {
       console.error('⚠️ Erro na migração de subpermissões:', err.message);
     }

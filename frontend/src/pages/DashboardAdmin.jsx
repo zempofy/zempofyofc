@@ -1844,6 +1844,7 @@ export default function DashboardAdmin() {
   const { usuario, temPermissao } = useAuth()
   const isTitular = usuario?.cargo === 'admin'
   const [pagina, setPagina] = useState('inicio')
+  const [clienteDetalheId, setClienteDetalheId] = useState(null)
   const [tarefas, setTarefas] = useState([])
   const [funcionarios, setFuncionarios] = useState([])
 
@@ -1919,12 +1920,12 @@ export default function DashboardAdmin() {
     if (pagina === 'tarefas') return <PaginaTarefas tarefas={tarefas} funcionarios={funcionarios} recarregar={carregarDados} />
     if (pagina === 'historico') return <PaginaHistorico />
     if (pagina === 'agenda') return <Agenda cargo="admin" usuarios={funcionarios} usuarioAtualId={usuario?.id} />
-    if (pagina === 'clientes') return <Clientes />
+    if (pagina === 'clientes') return <Clientes detalheInicial={clienteDetalheId} abaInicial="onboardings" onDetalheAberto={()=>setClienteDetalheId(null)} />
     if (pagina === 'chat') return <Chat setPagina={setPagina} />
     if (pagina === 'anotacoes') return <Anotacoes />
     if (pagina === 'relatorios') return <Relatorios />
     if (pagina === 'mural') return <Mural />
-    if (pagina === 'implantacao') return <Implantacao />
+    if (pagina === 'implantacao') return <Implantacao setPagina={setPagina} setClienteDetalheId={setClienteDetalheId} />
     if (pagina === 'modelos') return <ModelosOnboarding />
     if (pagina === 'checklist') return <BancoAtividades />
     if (pagina === 'setores') return <Setores funcionarios={funcionarios} />

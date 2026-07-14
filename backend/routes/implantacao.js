@@ -153,9 +153,13 @@ router.post('/', autenticar, async (req, res) => {
     // Vinculação automática com cliente
     if (cnpj?.trim()) {
       const cnpjLimpo = cnpj.replace(/\D/g, '');
+      // Pegar setores das etapas da implantação recém-criada
+      const setoresIds = [...new Set(
+        implantacao.etapas?.map(e => e.setor?.toString()).filter(Boolean) || []
+      )];
+
       const clienteExistente = await Cliente.findOne({ empresa: req.usuario.empresa._id, cnpj: { $regex: cnpjLimpo } });
       if (!clienteExistente) {
-        // Cria cliente automaticamente com dados básicos
         await Cliente.create({
           razaoSocial: nomeCliente.trim(),
           cnpj: cnpj.trim(),
@@ -164,9 +168,19 @@ router.post('/', autenticar, async (req, res) => {
           status: 'ativo',
           porte: '',
           regime: '',
+          setores: setoresIds,
+          origem: 'onboarding',
           servicosContratados: [],
+          socios: [],
         });
         console.log('✅ Cliente criado automaticamente via onboarding:', nomeCliente.trim());
+      } else {
+        // Atualizar setores do cliente existente
+        const setoresAtuais = clienteExistente.setores?.map(s => s.toString()) || [];
+        const novoSetores = [...new Set([...setoresAtuais, ...setoresIds])];
+        if (novoSetores.length > setoresAtuais.length) {
+          await Cliente.updateOne({ _id: clienteExistente._id }, { $set: { setores: novoSetores } });
+        }
       }
     }
 

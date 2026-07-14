@@ -57,6 +57,7 @@ const clienteSchema = new mongoose.Schema({
 
   // Observações internas
   setores: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Setor' }],
+  origem: { type: String, enum: ['manual', 'onboarding'], default: 'manual' },
   observacoes: { type: String, default: '' },
 });
 

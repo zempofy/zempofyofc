@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import api from '../services/api'
 import { useToast } from './Toast'
+import Icone from './Icones'
 import ImportarClientes from './ImportarClientes'
 
 // ── Máscaras ──
@@ -274,8 +275,8 @@ function FormCliente({ cliente, fechar, onSalvo }) {
             <Campo label="CNPJ">
               <input style={s.inp} value={form.cnpj} onChange={e=>set('cnpj',mascaraCNPJ(e.target.value))} placeholder="00.000.000/0000-00" onKeyDown={e=>e.key==='Enter'&&buscarCNPJ()} />
             </Campo>
-            <button onClick={buscarCNPJ} disabled={buscandoCNPJ} style={{ ...s.btnSecundario, flexShrink:0, height:'38px', alignSelf:'flex-end' }}>
-              {buscandoCNPJ ? '⏳ Buscando...' : '🔍 Buscar na Receita'}
+            <button onClick={buscarCNPJ} disabled={buscandoCNPJ} style={{ ...s.btnSecundario, flexShrink:0, height:'38px', alignSelf:'flex-end', display:'flex', alignItems:'center', gap:'6px' }}>
+              <Icone.Search size={13}/>{buscandoCNPJ ? 'Buscando...' : 'Buscar na Receita'}
             </button>
           </div>
 
@@ -288,8 +289,8 @@ function FormCliente({ cliente, fechar, onSalvo }) {
           <Campo label="Nome fantasia">
             <div style={{ display:'flex', gap:'8px', alignItems:'center' }}>
               <input style={{ ...s.inp, flex:1 }} value={form.nomeFantasia} onChange={e=>set('nomeFantasia',e.target.value)} placeholder="Como é conhecido" />
-              <button onClick={()=>set('nomeFantasia',form.razaoSocial)} title="Copiar razão social" style={{ background:'none', border:'1px solid var(--borda)', borderRadius:'8px', color:'var(--texto-apagado)', padding:'0 10px', height:'42px', cursor:'pointer', fontSize:'14px', flexShrink:0 }}>
-                ⎘
+              <button onClick={()=>set('nomeFantasia',form.razaoSocial)} title="Copiar razão social" style={{ background:'none', border:'1px solid var(--borda)', borderRadius:'8px', color:'var(--texto-apagado)', padding:'0 10px', height:'38px', cursor:'pointer', display:'flex', alignItems:'center', flexShrink:0 }}>
+                <Icone.Copy size={14}/>
               </button>
             </div>
           </Campo>
@@ -354,7 +355,7 @@ function FormCliente({ cliente, fechar, onSalvo }) {
                   }}>
                     <div style={{ width:'8px', height:'8px', borderRadius:'50%', background: setor.cor || 'var(--verde)', flexShrink:0 }} />
                     {setor.nome}
-                    {marcado && <span style={{ fontSize:'10px' }}>✓</span>}
+                    {marcado && <Icone.Check size={11}/>}
                   </button>
                 )
               })}
@@ -507,12 +508,12 @@ function FormCliente({ cliente, fechar, onSalvo }) {
 }
 
 // ── Tela de detalhe ──
-function TelaDetalhe({ clienteId, voltar, onAtualizado }) {
+function TelaDetalhe({ clienteId, voltar, onAtualizado, abaInicial = 'info' }) {
   const [dados, setDados] = useState(null)
   const [carregando, setCarregando] = useState(true)
   const [editando, setEditando] = useState(false)
   const [confirmExcluir, setConfirmExcluir] = useState(false)
-  const [aba, setAba] = useState('info')
+  const [aba, setAba] = useState(abaInicial)
   const { mostrar } = useToast()
 
   const buscar = async () => {
@@ -538,27 +539,44 @@ function TelaDetalhe({ clienteId, voltar, onAtualizado }) {
 
   return (
     <div>
-      <div style={{ display:'flex', alignItems:'flex-start', justifyContent:'space-between', marginBottom:'24px', flexWrap:'wrap', gap:'12px' }}>
-        <div>
-          <button onClick={voltar} style={{ background:'none', border:'none', color:'var(--texto-apagado)', cursor:'pointer', fontFamily:'Inter,sans-serif', fontSize:'0.82rem', padding:'0 0 10px', display:'flex', alignItems:'center', gap:'6px' }}>← Voltar para clientes</button>
+      {/* Voltar */}
+      <button onClick={voltar} style={{ background:'none', border:'none', color:'var(--texto-apagado)', cursor:'pointer', fontFamily:'Inter,sans-serif', fontSize:'0.82rem', padding:'0 0 12px', display:'flex', alignItems:'center', gap:'6px' }}>← Voltar para clientes</button>
+
+      {/* Cabeçalho modelo A */}
+      <div style={{ marginBottom:'20px' }}>
+        {/* Linha 1: avatar + nome + botões */}
+        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:'12px', flexWrap:'wrap', marginBottom:'14px' }}>
           <div style={{ display:'flex', alignItems:'center', gap:'12px' }}>
-            <div style={{ width:'44px', height:'44px', borderRadius:'10px', background:'var(--verde)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'1.1rem', fontWeight:'700', color:'#fff', flexShrink:0 }}>{nomeCliente.slice(0,2).toUpperCase()}</div>
+            <div style={{ width:'42px', height:'42px', borderRadius:'10px', background:'var(--verde)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'1rem', fontWeight:'700', color:'#fff', flexShrink:0 }}>{nomeCliente.slice(0,2).toUpperCase()}</div>
             <div>
-              <h1 style={{ fontSize:'1.4rem', fontWeight:'700', color:'var(--texto)', margin:0, letterSpacing:'-0.03em' }}>{nomeCliente}</h1>
-              {dados.nomeFantasia&&dados.nomeFantasia!==nomeCliente&&<p style={{ fontSize:'0.82rem', color:'var(--texto-apagado)', margin:'2px 0 0' }}>{dados.nomeFantasia}</p>}
+              <h1 style={{ fontSize:'1.3rem', fontWeight:'700', color:'var(--texto)', margin:0, letterSpacing:'-0.02em', fontFamily:'Inter,sans-serif' }}>{nomeCliente}</h1>
+              {dados.nomeFantasia&&dados.nomeFantasia!==nomeCliente&&<p style={{ fontSize:'0.78rem', color:'var(--texto-apagado)', margin:'2px 0 0', fontFamily:'Inter,sans-serif' }}>{dados.nomeFantasia}</p>}
             </div>
           </div>
+          <div style={{ display:'flex', gap:'8px', alignItems:'center' }}>
+            <button onClick={()=>setEditando(true)} style={{ ...s.btnAcao, display:'flex', alignItems:'center', gap:'5px' }}><Icone.Edit size={13}/>Editar</button>
+            <button onClick={()=>setConfirmExcluir(true)} style={{ ...s.btnAcao, color:'#f87171', borderColor:'rgba(248,113,113,0.3)', display:'flex', alignItems:'center', gap:'5px' }}><Icone.Trash size={13}/>Remover</button>
+          </div>
         </div>
-        <div style={{ display:'flex', gap:'8px', alignItems:'center', flexWrap:'wrap' }}>
-          {dados.setores?.length>0 && dados.setores.map(setor=>(
-            <span key={setor._id||setor} style={{ fontSize:'0.68rem', fontWeight:'600', padding:'3px 9px', borderRadius:'5px', background:'var(--input)', color:'var(--texto-apagado)', border:'1px solid var(--borda)', display:'flex', alignItems:'center', gap:'5px' }}>
-              <div style={{ width:'6px', height:'6px', borderRadius:'50%', background:setor.cor||'var(--verde)' }} />
-              {setor.nome||setor}
+        {/* Linha 2: setores + separador + status + origem */}
+        <div style={{ display:'flex', alignItems:'center', gap:'6px', flexWrap:'wrap' }}>
+          {dados.setores?.filter(s=>s.nome).map(setor=>(
+            <span key={setor._id||setor} style={{ display:'inline-flex', alignItems:'center', gap:'5px', padding:'3px 9px', borderRadius:'99px', background:'var(--input)', border:'1px solid var(--borda)', fontSize:'0.72rem', fontWeight:'600', color:'var(--texto-apagado)', fontFamily:'Inter,sans-serif' }}>
+              <div style={{ width:'7px', height:'7px', borderRadius:'50%', background:setor.cor||'var(--verde)', flexShrink:0 }}/>
+              {setor.nome}
             </span>
           ))}
-          <span style={{ fontSize:'0.75rem', fontWeight:'600', padding:'4px 12px', borderRadius:'99px', background:st.bg, color:st.cor }}>{st.label}</span>
-          <button onClick={()=>setEditando(true)} style={s.btnAcao}>Editar</button>
-          <button onClick={()=>setConfirmExcluir(true)} style={{ ...s.btnAcao, color:'#f87171', borderColor:'rgba(248,113,113,0.3)' }}>Remover</button>
+          {dados.setores?.filter(s=>s.nome).length>0&&<div style={{ width:'1px', height:'14px', background:'var(--borda)', flexShrink:0, margin:'0 2px' }}/>}
+          <span style={{ display:'inline-flex', alignItems:'center', gap:'4px', padding:'3px 9px', borderRadius:'99px', fontSize:'0.72rem', fontWeight:'600', fontFamily:'Inter,sans-serif', background:st.bg, color:st.cor }}>{st.label}</span>
+          {dados.onboardings?.some(o=>o.status!=='concluida') ? (
+            <span style={{ display:'inline-flex', alignItems:'center', gap:'4px', padding:'3px 9px', borderRadius:'99px', fontSize:'0.72rem', fontWeight:'600', background:'rgba(0,177,65,0.08)', color:'var(--verde)', fontFamily:'Inter,sans-serif' }}>
+              <Icone.ClipboardList size={11}/>Em onboarding
+            </span>
+          ) : dados.origem==='onboarding' ? (
+            <span style={{ display:'inline-flex', alignItems:'center', gap:'4px', padding:'3px 9px', borderRadius:'99px', fontSize:'0.72rem', fontWeight:'600', background:'var(--input)', color:'var(--texto-apagado)', border:'1px solid var(--borda)', fontFamily:'Inter,sans-serif' }}>
+              <Icone.Zap size={11}/>Via onboarding
+            </span>
+          ) : null}
         </div>
       </div>
 
@@ -632,7 +650,7 @@ function TelaDetalhe({ clienteId, voltar, onAtualizado }) {
             <div style={s.modalTopo}><p style={s.modalTit}>Remover cliente</p><button style={s.btnX} onClick={()=>setConfirmExcluir(false)}>✕</button></div>
             <div style={{ padding:'20px 24px' }}>
               <p style={{ fontSize:'0.875rem', color:'var(--texto)', margin:'0 0 12px', fontFamily:'Inter,sans-serif' }}>Tem certeza que deseja remover <strong>{nomeCliente}</strong>?</p>
-              <p style={{ fontSize:'0.8rem', color:'#fbbf24', background:'rgba(251,191,36,0.08)', border:'1px solid rgba(251,191,36,0.2)', borderRadius:'8px', padding:'10px 12px', margin:0, fontFamily:'Inter,sans-serif' }}>⚠️ Esta ação não pode ser desfeita.</p>
+              <p style={{ fontSize:'0.8rem', color:'#fbbf24', background:'rgba(251,191,36,0.08)', border:'1px solid rgba(251,191,36,0.2)', borderRadius:'8px', padding:'10px 12px', margin:0, fontFamily:'Inter,sans-serif' }} style={{ display:'flex', alignItems:'flex-start', gap:'8px' }}><Icone.AlertTriangle size={14} style={{color:'#fbbf24',flexShrink:0,marginTop:'1px'}}/> Esta ação não pode ser desfeita.</p>
             </div>
             <div style={s.modalRodape}>
               <button style={s.btnCanc} onClick={()=>setConfirmExcluir(false)}>Cancelar</button>
@@ -676,6 +694,20 @@ function CardCliente({ cliente, onClick }) {
           {cliente.setores.length>3&&<span style={{ fontSize:'0.63rem', color:'var(--texto-apagado)' }}>+{cliente.setores.length-3}</span>}
         </div>
       )}
+      <div style={{ display:'flex', gap:'6px', flexWrap:'wrap', marginBottom: (cliente._emOnboarding || cliente.origem==='onboarding') ? '10px' : '0' }}>
+        {cliente._emOnboarding && (
+          <div style={{ display:'flex', alignItems:'center', gap:'5px', padding:'3px 8px', background:'rgba(0,177,65,0.08)', border:'1px solid rgba(0,177,65,0.2)', borderRadius:'6px' }}>
+            <Icone.ClipboardList size={11} style={{ color:'var(--verde)' }}/>
+            <span style={{ fontSize:'0.63rem', fontWeight:'700', color:'var(--verde)', fontFamily:'Inter,sans-serif', letterSpacing:'0.3px' }}>EM ONBOARDING</span>
+          </div>
+        )}
+        {cliente.origem === 'onboarding' && !cliente._emOnboarding && (
+          <div style={{ display:'flex', alignItems:'center', gap:'5px', padding:'3px 8px', background:'rgba(99,102,241,0.08)', border:'1px solid rgba(99,102,241,0.2)', borderRadius:'6px' }}>
+            <Icone.Zap size={11} style={{ color:'#818cf8' }}/>
+            <span style={{ fontSize:'0.63rem', fontWeight:'700', color:'#818cf8', fontFamily:'Inter,sans-serif', letterSpacing:'0.3px' }}>VIA ONBOARDING</span>
+          </div>
+        )}
+      </div>
       <div style={{ borderTop:'1px solid var(--borda)', paddingTop:'12px', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
         <span style={{ fontSize:'0.72rem', color:'var(--texto-apagado)' }}>Honorário mensal</span>
         <span style={{ fontSize:'0.9rem', fontWeight:'700', color:honorarioTotal?'var(--verde)':'var(--texto-apagado)' }}>{formatMoeda(honorarioTotal)}</span>
@@ -685,7 +717,7 @@ function CardCliente({ cliente, onClick }) {
 }
 
 // ── Componente principal ──
-export default function Clientes() {
+export default function Clientes({ detalheInicial = null, abaInicial = 'info', onDetalheAberto }) {
   const [clientes, setClientes] = useState([])
   const [setoresList, setSetoresList] = useState([])
   const [carregando, setCarregando] = useState(true)
@@ -693,14 +725,20 @@ export default function Clientes() {
   const [filtroSetor, setFiltroSetor] = useState(null)
   const [formAberto, setFormAberto] = useState(false)
   const [importarAberto, setImportarAberto] = useState(false)
-  const [detalheId, setDetalheId] = useState(null)
+  const [detalheId, setDetalheId] = useState(detalheInicial)
   const { mostrar } = useToast()
 
   const carregar = async () => {
     setCarregando(true)
     try {
-      const [rC, rS] = await Promise.all([api.get('/clientes'), api.get('/setores')])
-      setClientes(rC.data)
+      const [rC, rS, rI] = await Promise.all([api.get('/clientes'), api.get('/setores'), api.get('/implantacoes')])
+      const impsAtivas = rI.data.filter(i => i.status !== 'concluida')
+      const cnpjsEmOnboarding = new Set(impsAtivas.map(i => i.cnpj?.replace(/\D/g,'')).filter(Boolean))
+      const clientesComBadge = rC.data.map(c => ({
+        ...c,
+        _emOnboarding: cnpjsEmOnboarding.has(c.cnpj?.replace(/\D/g,''))
+      }))
+      setClientes(clientesComBadge)
       setSetoresList(rS.data)
     } catch { mostrar('Erro ao carregar clientes.','erro') }
     finally { setCarregando(false) }
@@ -714,7 +752,7 @@ export default function Clientes() {
     return matchBusca && matchSetor
   })
 
-  if (detalheId) return <TelaDetalhe clienteId={detalheId} voltar={()=>setDetalheId(null)} onAtualizado={carregar}/>
+  if (detalheId) return <TelaDetalhe clienteId={detalheId} abaInicial={detalheInicial===detalheId?abaInicial:'info'} voltar={()=>{ setDetalheId(null); onDetalheAberto&&onDetalheAberto() }} onAtualizado={carregar}/>
   if (formAberto) return <FormCliente fechar={()=>setFormAberto(false)} onSalvo={carregar}/>
   if (importarAberto) return <ImportarClientes fechar={()=>setImportarAberto(false)} onImportado={()=>{ carregar(); setImportarAberto(false) }}/>
 
@@ -726,8 +764,8 @@ export default function Clientes() {
           <p style={{ fontSize:'0.82rem', color:'var(--texto-apagado)', marginTop:'5px' }}>{clientes.length} cliente(s) cadastrado(s)</p>
         </div>
         <div style={{ display:'flex', gap:'8px' }}>
-          <button onClick={()=>setImportarAberto(true)} style={{ ...s.btnPrimario, background:'none', border:'1px solid var(--borda)', color:'var(--texto)', boxShadow:'none' }}>⬆️ Importar</button>
-          <button onClick={()=>setFormAberto(true)} style={s.btnPrimario}>+ Novo cliente</button>
+          <button onClick={()=>setImportarAberto(true)} style={{ ...s.btnPrimario, background:'none', border:'1px solid var(--borda)', color:'var(--texto)', boxShadow:'none', display:'flex', alignItems:'center', gap:'6px' }}><Icone.Upload size={14}/> Importar</button>
+          <button onClick={()=>setFormAberto(true)} style={{ ...s.btnPrimario, display:'flex', alignItems:'center', gap:'6px' }}><Icone.Plus size={14}/> Novo cliente</button>
         </div>
       </div>
 

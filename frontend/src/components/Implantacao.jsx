@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import api from '../services/api'
+import Icone from './Icones'
 import { useToast } from './Toast'
 
 
@@ -47,7 +48,7 @@ function Balao({ alvo, titulo, texto, passo, total, onProximo, onFechar, posicao
 }
 
 // ── Mapa mental horizontal da implantação ──
-function DetalheImplantacao({ implantacao: inicial, voltar, onAtualizado }) {
+function DetalheImplantacao({ implantacao: inicial, voltar, onAtualizado, setPagina, setDetalheClienteId }) {
   const [implantacao, setImplantacao] = useState(inicial)
   const [etapaSelecionada, setEtapaSelecionada] = useState(
     () => inicial.etapas.find(e => e.status === 'em_andamento') || inicial.etapas[0]
@@ -146,12 +147,32 @@ function DetalheImplantacao({ implantacao: inicial, voltar, onAtualizado }) {
             {implantacao.inicioServicos && ` · Início dos serviços: ${new Date(implantacao.inicioServicos).toLocaleDateString('pt-BR')}`}
           </p>
         </div>
-        <button
-          style={{ background: 'rgba(248,113,113,0.1)', border: '1px solid rgba(248,113,113,0.25)', borderRadius: '10px', color: '#f87171', padding: '9px 18px', fontFamily: 'Inter, sans-serif', fontWeight: '600', fontSize: '0.85rem', cursor: 'pointer' }}
-          onClick={() => setConfirmandoExcluir(true)}
-        >
-          Excluir onboarding
-        </button>
+        <div style={{ display:'flex', gap:'8px' }}>
+          {implantacao.cnpj && setPagina && (
+            <button
+              style={{ background:'none', border:'1px solid var(--borda)', borderRadius:'10px', color:'var(--texto-apagado)', padding:'9px 18px', fontFamily:'Inter, sans-serif', fontWeight:'500', fontSize:'0.85rem', cursor:'pointer', display:'flex', alignItems:'center', gap:'6px' }}
+              onClick={async () => {
+                try {
+                  const cnpjLimpo = implantacao.cnpj.replace(/[^0-9]/g,'')
+                  const r = await api.get('/clientes')
+                  const cliente = r.data.find(c => c.cnpj?.replace(/[^0-9]/g,'') === cnpjLimpo)
+                  if (cliente && setClienteDetalheId) {
+                    setClienteDetalheId(cliente._id)
+                  }
+                  setPagina('clientes')
+                } catch { setPagina('clientes') }
+              }}
+            >
+              <Icone.ExternalLink size={14}/> Ver cliente
+            </button>
+          )}
+          <button
+            style={{ background: 'rgba(248,113,113,0.1)', border: '1px solid rgba(248,113,113,0.25)', borderRadius: '10px', color: '#f87171', padding: '9px 18px', fontFamily: 'Inter, sans-serif', fontWeight: '600', fontSize: '0.85rem', cursor: 'pointer' }}
+            onClick={() => setConfirmandoExcluir(true)}
+          >
+            Excluir onboarding
+          </button>
+        </div>
       </div>
 
       {/* Card do mapa */}
@@ -409,7 +430,7 @@ function ModalNovaImplantacao({ fechar, onCriado }) {
 }
 
 // ── Tela principal ──
-export default function Implantacao() {
+export default function Implantacao({ setPagina, setClienteDetalheId }) {
   const [implantacoes, setImplantacoes] = useState([])
   const [carregando, setCarregando] = useState(true)
   const [busca, setBusca] = useState('')
@@ -457,6 +478,8 @@ export default function Implantacao() {
         implantacao={detalheSelecionado}
         voltar={() => { setDetalheSelecionado(null); buscar() }}
         onAtualizado={buscar}
+        setPagina={setPagina}
+        setClienteDetalheId={setClienteDetalheId}
       />
     )
   }

@@ -1,5 +1,6 @@
 import { useState, useRef } from 'react'
 import * as XLSX from 'xlsx'
+import Icone from './Icones'
 import api from '../services/api'
 import { useToast } from './Toast'
 
@@ -182,7 +183,7 @@ export default function ImportarClientes({ fechar, onImportado }) {
               <p style={s.passoTit}>Baixe o modelo de planilha</p>
               <p style={s.passoSub}>Preencha com os dados dos seus clientes. Campos com * são obrigatórios.</p>
               <button onClick={baixarModelo} style={{ ...s.btnSec, marginTop:'10px' }}>
-                ⬇️ Baixar modelo .xlsx
+                <span style={{display:'flex',alignItems:'center',gap:'6px'}}><Icone.Download size={14}/> Baixar modelo .xlsx</span>
               </button>
             </div>
           </div>
@@ -201,7 +202,7 @@ export default function ImportarClientes({ fechar, onImportado }) {
                 onMouseEnter={e=>e.currentTarget.style.borderColor='var(--verde)'}
                 onMouseLeave={e=>e.currentTarget.style.borderColor='var(--borda)'}
               >
-                <p style={{ fontSize:'2rem', marginBottom:'8px' }}>📂</p>
+                <div style={{ display:'flex', justifyContent:'center', marginBottom:'12px' }}><Icone.FolderOpen size={32} style={{color:'var(--texto-apagado)',opacity:0.5}}/></div>
                 <p style={{ fontSize:'0.875rem', color:'var(--texto)', fontFamily:'Inter,sans-serif', margin:0 }}>Clique ou arraste o arquivo aqui</p>
                 <p style={{ fontSize:'0.75rem', color:'var(--texto-apagado)', fontFamily:'Inter,sans-serif', margin:'4px 0 0' }}>.xlsx ou .xls</p>
               </div>
@@ -211,7 +212,7 @@ export default function ImportarClientes({ fechar, onImportado }) {
 
           <div style={{ padding:'14px 16px', background:'rgba(251,191,36,0.06)', border:'1px solid rgba(251,191,36,0.2)', borderRadius:'10px' }}>
             <p style={{ fontSize:'0.78rem', color:'#fbbf24', margin:0, fontFamily:'Inter,sans-serif', lineHeight:'1.5' }}>
-              ⚠️ Após importar, complete as informações de cada cliente (serviços, sócios, endereço) editando individualmente.
+              <span style={{display:'flex',alignItems:'flex-start',gap:'8px'}}><Icone.AlertTriangle size={14} style={{color:'#fbbf24',flexShrink:0,marginTop:'1px'}}/> Após importar, complete as informações de cada cliente (serviços, sócios, endereço) editando individualmente.</span>
             </p>
           </div>
         </div>
@@ -226,7 +227,7 @@ export default function ImportarClientes({ fechar, onImportado }) {
             </p>
             {!enriquecidos.length && clientes.some(c=>c.cnpj) && (
               <button onClick={enriquecerReceita} style={s.btnVerde}>
-                🏛️ Enriquecer com dados da Receita Federal
+                <span style={{display:'flex',alignItems:'center',gap:'6px'}}><Icone.Building size={14}/> Enriquecer com dados da Receita Federal</span>
               </button>
             )}
             {enriquecidos.length > 0 && (
@@ -257,7 +258,7 @@ export default function ImportarClientes({ fechar, onImportado }) {
                       </span>
                     </td>
                     <td style={{ padding:'10px 14px' }}>
-                      {c._enriquecido ? <span style={{ color:'#00b141', fontSize:'0.75rem' }}>✓ OK</span>
+                      {c._enriquecido ? <span style={{ color:'#00b141', fontSize:'0.75rem', display:'flex', alignItems:'center', gap:'4px' }}><Icone.Check size={11}/>OK</span>
                       : c._erro ? <span style={{ color:'#f87171', fontSize:'0.72rem' }}>{c._erro}</span>
                       : <span style={{ color:'var(--texto-apagado)', fontSize:'0.72rem' }}>—</span>}
                     </td>
@@ -279,7 +280,7 @@ export default function ImportarClientes({ fechar, onImportado }) {
       {/* Etapa: enriquecendo */}
       {etapa === 'enriquecendo' && (
         <div style={{ flex:1, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:'20px' }}>
-          <p style={{ fontSize:'2rem' }}>🏛️</p>
+          <Icone.Building size={40} style={{color:'var(--verde)',opacity:0.7}}/>
           <p style={{ fontSize:'1rem', fontWeight:'600', color:'var(--texto)', fontFamily:'Inter,sans-serif' }}>Consultando a Receita Federal...</p>
           <div style={{ width:'300px' }}>
             <div style={{ height:'6px', background:'var(--borda)', borderRadius:'99px', overflow:'hidden' }}>
@@ -296,7 +297,7 @@ export default function ImportarClientes({ fechar, onImportado }) {
       {/* Etapa: resultado */}
       {etapa === 'resultado' && resultado && (
         <div style={{ flex:1, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:'20px' }}>
-          <p style={{ fontSize:'3rem' }}>{resultado.importados > 0 ? '🎉' : '⚠️'}</p>
+          {resultado.importados > 0 ? <Icone.CheckCircle size={48} style={{color:'var(--verde)'}}/> : <Icone.AlertTriangle size={48} style={{color:'#fbbf24'}}/>}
           <div style={{ textAlign:'center' }}>
             <p style={{ fontSize:'1.2rem', fontWeight:'700', color:'var(--texto)', fontFamily:'Inter,sans-serif', margin:'0 0 8px' }}>Importação concluída!</p>
             <p style={{ fontSize:'0.875rem', color:'var(--texto-apagado)', fontFamily:'Inter,sans-serif', margin:0 }}>
