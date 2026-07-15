@@ -462,6 +462,9 @@ function NavItens({ menuItens, paginaAtual, setPagina, sidebarAberta, onItemClic
           >
             <span style={styles.navIcone}>{item.icone}</span>
             {sidebarAberta && <span style={styles.navLabel}>{item.label}</span>}
+            {sidebarAberta && item.badge && (
+              <span style={{ fontSize:'9px', fontWeight:'700', padding:'1px 6px', borderRadius:'4px', background:'rgba(99,102,241,0.12)', color:'#818cf8', letterSpacing:'0.5px', marginLeft:'auto', flexShrink:0 }}>{item.badge}</span>
+            )}
           </button>
         )
       })}

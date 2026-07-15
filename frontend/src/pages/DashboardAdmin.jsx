@@ -20,6 +20,7 @@ import BancoAtividades from '../components/BancoAtividades'
 import Clientes from '../components/Clientes'
 import Servicos from '../components/Servicos'
 import Obrigacoes from '../components/Obrigacoes'
+import CRM from '../components/CRM'
 
 // ============ PÁGINAS INTERNAS ============
 
@@ -1872,6 +1873,7 @@ export default function DashboardAdmin() {
   // Sidebar dinâmico — cada item só aparece se tiver permissão
   const menuItens = [
     { id: 'inicio', label: 'Início', icone: <Icone.Home size={16} /> },
+    { id: 'crm', label: 'CRM', icone: <Icone.Users size={16} />, badge: 'Beta' },
 
     // Separador — Escritório
     { id: '__sep_escritorio', separador: true, label: 'Escritório' },
@@ -1915,6 +1917,7 @@ export default function DashboardAdmin() {
   ]
 
   const renderPagina = () => {
+    if (pagina === 'crm') return <CRM />
     if (pagina === 'inicio') return <PaginaInicio usuario={usuario} tarefas={tarefas} funcionarios={funcionarios} setPagina={setPagina} />
     if (pagina === 'equipe') return <PaginaEquipe usuario={usuario} equipe={funcionarios} recarregar={carregarDados} />
     if (pagina === 'tarefas') return <PaginaTarefas tarefas={tarefas} funcionarios={funcionarios} recarregar={carregarDados} />
