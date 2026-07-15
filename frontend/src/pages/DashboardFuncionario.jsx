@@ -647,6 +647,7 @@ function PaginaEquipeColaborador() {
 export default function DashboardFuncionario() {
   const { usuario, temPermissao } = useAuth()
   const [pagina, setPagina] = useState('inicio')
+  const [clienteDetalheId, setClienteDetalheId] = useState(null)
   const [tarefas, setTarefas] = useState([])
 
   const carregarDados = async () => {
@@ -703,15 +704,15 @@ export default function DashboardFuncionario() {
       {pagina === 'tarefas-onboarding' && <PaginaMinhasTarefas tarefas={tarefas} recarregar={carregarDados} modo="onboarding" />}
       {pagina === 'tarefas-minhas' && <PaginaMinhasTarefas tarefas={tarefas} recarregar={carregarDados} modo="minhas" />}
       {pagina === 'agenda' && <Agenda cargo="funcionario" usuarioAtualId={usuario?.id} />}
-      {pagina === 'implantacao' && <Implantacao />}
+      {pagina === 'implantacao' && <Implantacao setPagina={setPagina} setClienteDetalheId={setClienteDetalheId} />}
       {pagina === 'modelos' && <ModelosOnboarding />}
       {pagina === 'checklist' && <BancoAtividades />}
-      {pagina === 'clientes' && <Clientes />}
+      {pagina === 'clientes' && <Clientes detalheInicial={clienteDetalheId} abaInicial="onboardings" onDetalheAberto={()=>setClienteDetalheId(null)} />}
       {pagina === 'equipe' && <PaginaEquipeColaborador />}
       {pagina === 'setores' && <Setores funcionarios={[]} />}
       {pagina === 'servicos' && <Servicos />}
       {pagina === 'obrigacoes' && <Obrigacoes />}
-      {pagina === 'onboarding' && <Implantacao />}
+      {pagina === 'onboarding' && <Implantacao setPagina={setPagina} setClienteDetalheId={setClienteDetalheId} />}
       {pagina === 'chat' && <Chat setPagina={setPagina} />}
       {pagina === 'anotacoes' && <Anotacoes />}
       {pagina === 'relatorios' && <Relatorios />}

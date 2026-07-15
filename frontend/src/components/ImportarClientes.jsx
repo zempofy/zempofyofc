@@ -33,12 +33,8 @@ function baixarModelo() {
     ['', '', 'MEI / ME / EPP / Grande', 'Simples Nacional / Lucro Presumido / Lucro Real / MEI / Outro', 'Ativo / Inativo / Em encerramento', '', '', ''],
   ]
 
-  const exemplos = [
-    ['Empresa Exemplo LTDA', '12.345.678/0001-90', 'ME', 'Simples Nacional', 'Ativo', 'Exemplo', '(31) 99999-9999', 'contato@exemplo.com'],
-  ]
-
   const wb = XLSX.utils.book_new()
-  const ws = XLSX.utils.aoa_to_sheet([...cabecalho, ...exemplos])
+  const ws = XLSX.utils.aoa_to_sheet([...cabecalho])
 
   // Larguras das colunas
   ws['!cols'] = [

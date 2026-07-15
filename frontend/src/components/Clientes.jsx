@@ -725,7 +725,21 @@ export default function Clientes({ detalheInicial = null, abaInicial = 'info', o
   const [filtroSetor, setFiltroSetor] = useState(null)
   const [formAberto, setFormAberto] = useState(false)
   const [importarAberto, setImportarAberto] = useState(false)
-  const [detalheId, setDetalheId] = useState(detalheInicial)
+  const [detalheId, setDetalheId] = useState(() => {
+    // Verificar localStorage na montagem
+    const salvo = localStorage.getItem('zempofy_abrir_cliente')
+    if (salvo) {
+      localStorage.removeItem('zempofy_abrir_cliente')
+      return salvo
+    }
+    return detalheInicial || null
+  })
+
+  useEffect(() => {
+    if (detalheInicial && detalheInicial !== detalheId) {
+      setDetalheId(detalheInicial)
+    }
+  }, [detalheInicial])
   const { mostrar } = useToast()
 
   const carregar = async () => {

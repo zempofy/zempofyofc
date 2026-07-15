@@ -583,9 +583,12 @@ export default function Layout({ children, menuItens, paginaAtual, setPagina }) 
                   overflow: 'hidden',
                 }}>
                   <div style={{ padding: '14px 16px', borderBottom: '1px solid #27272a' }}>
-                    <p style={{ fontSize: '0.85rem', fontWeight: '600', color: '#fff', margin: 0, fontFamily: 'Inter, sans-serif' }}>{usuario?.nome}</p>
+                    {usuario?.empresa?.nome && (
+                      <p style={{ fontSize: '0.65rem', fontWeight: '700', color: 'rgba(255,255,255,0.35)', margin: '0 0 6px', fontFamily: 'Inter, sans-serif', textTransform: 'uppercase', letterSpacing: '0.8px' }}>{usuario.empresa.nome}</p>
+                    )}
+                    <p style={{ fontSize: '0.9rem', fontWeight: '600', color: '#fff', margin: 0, fontFamily: 'Inter, sans-serif' }}>{usuario?.nome}</p>
                     <p style={{ fontSize: '0.72rem', color: 'rgba(255,255,255,0.4)', margin: '2px 0 0', fontFamily: 'Inter, sans-serif' }}>{usuario?.cargo === 'admin' ? 'Titular' : 'Colaborador'}</p>
-                    <p style={{ fontSize: '0.65rem', color: 'rgba(255,255,255,0.25)', margin: '4px 0 0', fontFamily: 'Inter, sans-serif', letterSpacing: '0.3px' }}>ID #{usuario?.id?.slice(-8).toUpperCase() || '--------'}</p>
+                    <p style={{ fontSize: '0.65rem', color: 'rgba(255,255,255,0.2)', margin: '6px 0 0', fontFamily: 'Inter, sans-serif', letterSpacing: '0.3px' }}>ID #{usuario?.id?.slice(-8).toUpperCase() || '--------'}</p>
                   </div>
                   <button
                     onClick={() => { setPainelAberto(false); sair() }}

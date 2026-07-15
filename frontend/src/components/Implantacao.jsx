@@ -156,8 +156,10 @@ function DetalheImplantacao({ implantacao: inicial, voltar, onAtualizado, setPag
                   const cnpjLimpo = implantacao.cnpj.replace(/[^0-9]/g,'')
                   const r = await api.get('/clientes')
                   const cliente = r.data.find(c => c.cnpj?.replace(/[^0-9]/g,'') === cnpjLimpo)
-                  if (cliente && setClienteDetalheId) {
-                    setClienteDetalheId(cliente._id)
+                  if (cliente) {
+                    // Guardar no localStorage — garante que estará disponível quando Clientes montar
+                    localStorage.setItem('zempofy_abrir_cliente', cliente._id)
+                    if (setClienteDetalheId) setClienteDetalheId(cliente._id)
                   }
                   setPagina('clientes')
                 } catch { setPagina('clientes') }
