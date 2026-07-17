@@ -137,4 +137,52 @@ const enviarVerificacaoEmail = async ({ destinatario, nome, token }) => {
   }
 };
 
-module.exports = { enviarOnboardingCriado, enviarEtapaDesbloqueada, enviarTarefaAtribuida, enviarVerificacaoEmail };
+// 5. Boas-vindas ao novo colaborador
+const enviarBoasVindas = async ({ destinatario, nome, nomeEmpresa, nomeConvidadoPor, senha }) => {
+  const corpo = `
+    <p>Olá, <strong>${nome}</strong>! Seja muito bem-vindo(a) ao <strong>${nomeEmpresa}</strong> no Zempofy.</p>
+    <p>${nomeConvidadoPor} adicionou você ao sistema. Aqui estão seus dados de acesso:</p>
+    <div class="card">
+      <p>E-mail: <span>${destinatario}</span></p>
+      <p style="margin-top:8px">Senha provisória: <span>${senha}</span></p>
+    </div>
+    <p>Recomendamos que você altere sua senha após o primeiro acesso. Acesse o sistema pelo link abaixo:</p>
+    <a class="btn" href="https://app.zempofy.com.br">Acessar o Zempofy</a>
+    <p style="margin-top:16px;font-size:0.8rem;color:#71717a">Se tiver dúvidas, entre em contato com seu titular ou acesse suporte@zempofy.com.br</p>
+  `;
+  try {
+    await resend.emails.send({
+      from: FROM,
+      to: destinatario,
+      subject: `Bem-vindo(a) ao Zempofy — ${nomeEmpresa}`,
+      html: template(`Bem-vindo(a) ao Zempofy!`, corpo),
+    });
+  } catch (err) {
+    console.error('Erro ao enviar e-mail boas-vindas:', err);
+  }
+};
+
+// 6. Alerta de onboarding parado
+const enviarAlertaOnboardingParado = async ({ destinatario, nomeCliente, diasParado, etapaAtual, empresa }) => {
+  const corpo = `
+    <p>O processo de entrada do cliente <strong>${nomeCliente}</strong> está parado há <strong>${diasParado} dias</strong> sem movimentação.</p>
+    <div class="card">
+      <p>${nomeCliente}</p>
+      <span>Etapa atual: ${etapaAtual} · Parado há ${diasParado} dias</span>
+    </div>
+    <p>Verifique o que está pendente e dê continuidade ao processo o quanto antes.</p>
+    <a class="btn" href="https://app.zempofy.com.br">Ver onboarding</a>
+  `;
+  try {
+    await resend.emails.send({
+      from: FROM,
+      to: destinatario,
+      subject: `⚠️ Onboarding parado: ${nomeCliente}`,
+      html: template(`Onboarding sem movimentação`, corpo),
+    });
+  } catch (err) {
+    console.error('Erro ao enviar alerta onboarding parado:', err);
+  }
+};
+
+module.exports = { enviarOnboardingCriado, enviarEtapaDesbloqueada, enviarTarefaAtribuida, enviarVerificacaoEmail, enviarBoasVindas, enviarAlertaOnboardingParado };

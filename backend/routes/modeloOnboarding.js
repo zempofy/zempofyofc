@@ -80,7 +80,7 @@ router.delete('/:id', autenticar, apenasAdmin, async (req, res) => {
       { _id: req.params.id, empresa: req.usuario.empresa._id },
       { ativo: false }
     );
-    registrarLog({ empresa: req.usuario.empresa._id, usuario: req.usuario._id, tipo: 'modelo_excluido', descricao: 'Excluiu um modelo' });
+    registrarLog({ empresa: req.usuario.empresa._id, usuario: req.usuario._id, tipo: 'modelo_excluido', categoria: 'modelo', descricao: 'Excluiu um modelo' });
     res.json({ mensagem: 'Modelo removido.' });
   } catch (err) {
     res.status(500).json({ erro: 'Erro ao remover modelo.' });

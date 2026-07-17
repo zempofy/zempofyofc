@@ -49,7 +49,6 @@ router.post('/', autenticar, async (req, res) => {
   if (!viaOnboarding) {
     if (!porte) return res.status(400).json({ erro: 'Porte é obrigatório.' });
     if (!regime) return res.status(400).json({ erro: 'Regime tributário é obrigatório.' });
-    if (!servicosContratados?.length) return res.status(400).json({ erro: 'Informe ao menos um serviço contratado.' });
   }
   try {
     if (cnpj) {
@@ -63,7 +62,7 @@ router.post('/', autenticar, async (req, res) => {
       empresa: req.usuario.empresa._id,
       criadoPor: req.usuario._id,
     });
-    registrarLog({ empresa: req.usuario.empresa._id, usuario: req.usuario._id, tipo: 'cliente_criado', descricao: 'Cadastrou o cliente ' + razaoSocial.trim(), meta: { nome: razaoSocial } });
+    registrarLog({ empresa: req.usuario.empresa._id, usuario: req.usuario._id, tipo: 'cliente_criado', categoria: 'cliente', descricao: 'Cadastrou o cliente ' + razaoSocial.trim(), meta: { nome: razaoSocial } });
     res.status(201).json(cliente);
   } catch (err) {
     res.status(500).json({ erro: 'Erro ao criar cliente.' });
@@ -79,7 +78,7 @@ router.put('/:id', autenticar, async (req, res) => {
       { new: true }
     );
     if (!cliente) return res.status(404).json({ erro: 'Cliente não encontrado.' });
-    registrarLog({ empresa: req.usuario.empresa._id, usuario: req.usuario._id, tipo: 'cliente_editado', descricao: 'Editou o cliente ' + cliente.razaoSocial });
+    registrarLog({ empresa: req.usuario.empresa._id, usuario: req.usuario._id, tipo: 'cliente_editado', categoria: 'cliente', descricao: 'Editou o cliente ' + cliente.razaoSocial });
     res.json(cliente);
   } catch (err) {
     res.status(500).json({ erro: 'Erro ao editar cliente.' });
@@ -90,7 +89,7 @@ router.put('/:id', autenticar, async (req, res) => {
 router.delete('/:id', autenticar, async (req, res) => {
   try {
     const cliente = await Cliente.findOneAndDelete({ _id: req.params.id, empresa: req.usuario.empresa._id });
-    if (cliente) registrarLog({ empresa: req.usuario.empresa._id, usuario: req.usuario._id, tipo: 'cliente_excluido', descricao: 'Removeu o cliente ' + cliente.razaoSocial });
+    if (cliente) registrarLog({ empresa: req.usuario.empresa._id, usuario: req.usuario._id, tipo: 'cliente_excluido', categoria: 'cliente', descricao: 'Removeu o cliente ' + cliente.razaoSocial });
     res.json({ mensagem: 'Cliente removido.' });
   } catch (err) {
     res.status(500).json({ erro: 'Erro ao remover cliente.' });
@@ -131,6 +130,18 @@ router.post('/importar', autenticar, async (req, res) => {
       }
     }
 
+    // Registrar no histórico
+    if (resultados.importados > 0) {
+      const registrarLog = require('../services/log');
+      registrarLog({
+        empresa: req.usuario.empresa._id,
+        usuario: req.usuario._id,
+        tipo: 'clientes_importados',
+        categoria: 'cliente',
+        descricao: `Importou ${resultados.importados} cliente(s) via planilha Excel`,
+        meta: { total: resultados.importados }
+      });
+    }
     res.json(resultados);
   } catch (err) {
     res.status(500).json({ erro: 'Erro ao importar clientes.' });

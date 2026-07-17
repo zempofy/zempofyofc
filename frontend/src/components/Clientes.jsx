@@ -102,6 +102,7 @@ function FormCliente({ cliente, fechar, onSalvo }) {
   const [carregando, setCarregando] = useState(false)
   const [buscandoCNPJ, setBuscandoCNPJ] = useState(false)
   const [buscandoCEP, setBuscandoCEP] = useState(false)
+  const [cidadesSugestoes, setCidadesSugestoes] = useState([])
   const [erro, setErro] = useState('')
   const [camposComErro, setCamposComErro] = useState([])
   const [setoresList, setSetoresList] = useState([])
@@ -209,6 +210,19 @@ function FormCliente({ cliente, fechar, onSalvo }) {
   }
 
   // ── Busca CEP ──
+  const buscarCidadesIBGE = async (uf, termoCidade) => {
+    if (!uf || uf.length !== 2 || !termoCidade || termoCidade.length < 2) { setCidadesSugestoes([]); return }
+    try {
+      const r = await fetch(`https://servicodados.ibge.gov.br/api/v1/localidades/estados/${uf.toUpperCase()}/municipios`)
+      const data = await r.json()
+      const filtradas = data
+        .filter(c => c.nome.toLowerCase().includes(termoCidade.toLowerCase()))
+        .slice(0, 6)
+        .map(c => c.nome)
+      setCidadesSugestoes(filtradas)
+    } catch {}
+  }
+
   const buscarCEP = async (cep) => {
     const limpo = cep.replace(/\D/g,'')
     if (limpo.length !== 8) return
@@ -231,7 +245,7 @@ function FormCliente({ cliente, fechar, onSalvo }) {
     if (!form.razaoSocial.trim()) { erros.push('Razão social'); campos.push('razaoSocial') }
     if (!form.porte) { erros.push('Porte'); campos.push('porte') }
     if (!form.regime) { erros.push('Regime tributário'); campos.push('regime') }
-    if (!form.servicosContratados.some(s=>s.nome.trim())) { erros.push('Ao menos um serviço contratado'); campos.push('servicos') }
+    // Serviço não é mais obrigatório
     if (form.email && !form.email.includes('@')) { erros.push('E-mail inválido'); campos.push('email') }
     if (erros.length) {
       setErro(`Preencha os campos obrigatórios: ${erros.join(', ')}.`)
@@ -401,7 +415,24 @@ function FormCliente({ cliente, fechar, onSalvo }) {
               <input style={s.inp} value={form.endereco.bairro} onChange={e=>setEnd('bairro',e.target.value)} />
             </Campo>
             <Campo label="Cidade">
-              <input style={s.inp} value={form.endereco.cidade} onChange={e=>setEnd('cidade',e.target.value)} />
+              <div style={{ position:'relative' }}>
+                <input style={s.inp} value={form.endereco.cidade}
+                  onChange={e=>{ setEnd('cidade',e.target.value); buscarCidadesIBGE(form.endereco.estado, e.target.value) }}
+                  onBlur={()=>setTimeout(()=>setCidadesSugestoes([]),150)}
+                  autoComplete="off"
+                />
+                {cidadesSugestoes.length>0 && (
+                  <div style={{ position:'absolute', top:'calc(100% + 4px)', left:0, right:0, background:'var(--card)', border:'1px solid var(--borda)', borderRadius:'8px', boxShadow:'0 8px 24px rgba(0,0,0,0.4)', zIndex:10, overflow:'hidden' }}>
+                    {cidadesSugestoes.map(c=>(
+                      <button key={c} onMouseDown={()=>{ setEnd('cidade',c); setCidadesSugestoes([]) }}
+                        style={{ display:'block', width:'100%', padding:'8px 12px', background:'none', border:'none', borderBottom:'1px solid var(--borda)', color:'var(--texto)', fontSize:'0.82rem', cursor:'pointer', textAlign:'left', fontFamily:'Inter,sans-serif' }}
+                        onMouseEnter={e=>e.currentTarget.style.background='var(--input)'}
+                        onMouseLeave={e=>e.currentTarget.style.background='none'}
+                      >{c}</button>
+                    ))}
+                  </div>
+                )}
+              </div>
             </Campo>
           </div>
         </Secao>
@@ -698,7 +729,9 @@ function CardCliente({ cliente, onClick }) {
         {cliente._emOnboarding && (
           <div style={{ display:'flex', alignItems:'center', gap:'5px', padding:'3px 8px', background:'rgba(0,177,65,0.08)', border:'1px solid rgba(0,177,65,0.2)', borderRadius:'6px' }}>
             <Icone.ClipboardList size={11} style={{ color:'var(--verde)' }}/>
-            <span style={{ fontSize:'0.63rem', fontWeight:'700', color:'var(--verde)', fontFamily:'Inter,sans-serif', letterSpacing:'0.3px' }}>EM ONBOARDING</span>
+            <span style={{ fontSize:'0.63rem', fontWeight:'700', color:'var(--verde)', fontFamily:'Inter,sans-serif', letterSpacing:'0.3px' }}>
+              EM ONBOARDING{cliente._pctOnboarding !== null ? ` · ${cliente._pctOnboarding}%` : ''}
+            </span>
           </div>
         )}
         {cliente.origem === 'onboarding' && !cliente._emOnboarding && (
@@ -708,6 +741,13 @@ function CardCliente({ cliente, onClick }) {
           </div>
         )}
       </div>
+      {cliente._emOnboarding && cliente._pctOnboarding !== null && (
+        <div style={{ marginBottom:'10px' }}>
+          <div style={{ height:'3px', background:'var(--borda)', borderRadius:'99px', overflow:'hidden' }}>
+            <div style={{ height:'100%', width:`${cliente._pctOnboarding}%`, background:'var(--verde)', borderRadius:'99px' }}/>
+          </div>
+        </div>
+      )}
       <div style={{ borderTop:'1px solid var(--borda)', paddingTop:'12px', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
         <span style={{ fontSize:'0.72rem', color:'var(--texto-apagado)' }}>Honorário mensal</span>
         <span style={{ fontSize:'0.9rem', fontWeight:'700', color:honorarioTotal?'var(--verde)':'var(--texto-apagado)' }}>{formatMoeda(honorarioTotal)}</span>
@@ -748,10 +788,16 @@ export default function Clientes({ detalheInicial = null, abaInicial = 'info', o
       const [rC, rS, rI] = await Promise.all([api.get('/clientes'), api.get('/setores'), api.get('/implantacoes')])
       const impsAtivas = rI.data.filter(i => i.status !== 'concluida')
       const cnpjsEmOnboarding = new Set(impsAtivas.map(i => i.cnpj?.replace(/\D/g,'')).filter(Boolean))
-      const clientesComBadge = rC.data.map(c => ({
-        ...c,
-        _emOnboarding: cnpjsEmOnboarding.has(c.cnpj?.replace(/\D/g,''))
-      }))
+      const clientesComBadge = rC.data.map(c => {
+        const cnpjLimpo = c.cnpj?.replace(/\D/g,'')
+        const imp = cnpjLimpo ? impsAtivas.find(i => i.cnpj?.replace(/\D/g,'') === cnpjLimpo) : null
+        const pct = imp ? (() => {
+          const total = imp.etapas?.length || 0
+          const conc = imp.etapas?.filter(e => e.status === 'concluida').length || 0
+          return total ? Math.round((conc/total)*100) : 0
+        })() : null
+        return { ...c, _emOnboarding: !!imp, _pctOnboarding: pct }
+      })
       setClientes(clientesComBadge)
       setSetoresList(rS.data)
     } catch { mostrar('Erro ao carregar clientes.','erro') }
@@ -764,6 +810,10 @@ export default function Clientes({ detalheInicial = null, abaInicial = 'info', o
     const matchBusca = nome.toLowerCase().includes(busca.toLowerCase()) || c.nomeFantasia?.toLowerCase().includes(busca.toLowerCase()) || c.cnpj?.includes(busca)
     const matchSetor = !filtroSetor || c.setores?.some(s=>(s._id||s)===filtroSetor)
     return matchBusca && matchSetor
+  }).sort((a,b)=>{
+    const nomeA = (a.razaoSocial||a.nome||'').toLowerCase().trim()
+    const nomeB = (b.razaoSocial||b.nome||'').toLowerCase().trim()
+    return nomeA.localeCompare(nomeB, 'pt-BR', { numeric: true })
   })
 
   if (detalheId) return <TelaDetalhe clienteId={detalheId} abaInicial={detalheInicial===detalheId?abaInicial:'info'} voltar={()=>{ setDetalheId(null); onDetalheAberto&&onDetalheAberto() }} onAtualizado={carregar}/>
@@ -831,7 +881,7 @@ const s = {
   btnCanc: { background:'none', border:'1px solid var(--borda)', borderRadius:'10px', color:'var(--texto-apagado)', padding:'10px 20px', fontFamily:'Inter,sans-serif', fontWeight:'500', fontSize:'0.875rem', cursor:'pointer' },
   btnSalv: { background:'var(--gradiente-verde)', color:'#fff', border:'none', borderRadius:'10px', padding:'10px 20px', fontFamily:'Inter,sans-serif', fontWeight:'600', fontSize:'0.875rem', cursor:'pointer' },
   btnAcao: { background:'none', border:'1px solid var(--borda)', borderRadius:'6px', color:'var(--texto-apagado)', fontSize:'0.75rem', cursor:'pointer', padding:'5px 12px', fontFamily:'Inter,sans-serif' },
-  inp: { background:'var(--input)', border:'1px solid var(--borda)', borderRadius:'8px', padding:'8px 12px', color:'var(--texto)', fontSize:'0.85rem', fontFamily:'Inter,sans-serif', width:'100%', boxSizing:'border-box' },
+  inp: { background:'var(--input)', border:'1px solid var(--borda)', borderRadius:'8px', padding:'8px 12px', color:'var(--texto)', fontSize:'0.85rem', fontFamily:'Inter,sans-serif', width:'100%', boxSizing:'border-box', colorScheme:'dark' },
   erro: { color:'#FCA5A5', fontSize:'0.8rem', background:'rgba(239,68,68,0.1)', padding:'8px 12px', borderRadius:'8px', fontFamily:'Inter,sans-serif' },
   secCard: { background:'var(--card)', border:'1px solid var(--borda)', borderRadius:'12px', padding:'18px 20px' },
   secTit: { fontSize:'0.75rem', fontWeight:'700', color:'var(--texto-apagado)', textTransform:'uppercase', letterSpacing:'1px', margin:'0 0 14px', fontFamily:'Inter,sans-serif' },

@@ -436,6 +436,7 @@ export default function Implantacao({ setPagina, setClienteDetalheId }) {
   const [implantacoes, setImplantacoes] = useState([])
   const [carregando, setCarregando] = useState(true)
   const [busca, setBusca] = useState('')
+  const [concluídosAbertos, setConcluídosAbertos] = useState(false)
   const [modalAberto, setModalAberto] = useState(false)
 
   // ── Tour ──
@@ -444,10 +445,13 @@ export default function Implantacao({ setPagina, setClienteDetalheId }) {
   const refBtnNovo = useRef(null)
   const refBusca = useRef(null)
   const refCard = useRef(null)
+  const refFiltro = useRef(null)
 
   const passosTour = [
-    { ref: refBtnNovo, titulo: 'Criar uma implantação', texto: 'Clique aqui para iniciar o onboarding de um novo cliente. Você precisará selecionar um modelo criado previamente.', posicao: 'bottom' },
-    { ref: refBusca, titulo: 'Busque seus clientes', texto: 'Use a busca para encontrar rapidamente um onboarding em andamento pelo nome do cliente.', posicao: 'bottom' },
+    { ref: refBtnNovo, titulo: '1. Iniciar onboarding', texto: 'Clique aqui para cadastrar uma nova empresa em onboarding. Você vai selecionar o modelo (tipo de empresa) e o sistema cria todas as etapas automaticamente.', posicao: 'bottom' },
+    { ref: refBusca, titulo: '2. Buscar empresas', texto: 'Use esta barra para encontrar rapidamente qualquer empresa em onboarding pelo nome.', posicao: 'bottom' },
+    { ref: refFiltro, titulo: '3. Filtrar por status', texto: 'Filtre os onboardings por status: Em andamento, Concluídos ou todos. Útil para separar o que ainda está em processo do que já foi finalizado.', posicao: 'bottom' },
+    { ref: refCard, titulo: '4. Acompanhar progresso', texto: 'Cada card mostra o cliente, a etapa atual e o % de progresso. Clique no card para ver os detalhes, concluir atividades e avançar para a próxima etapa.', posicao: 'top' },
   ]
 
   const iniciarTour = () => { setTourPasso(0); setTourAtivo(true) }
@@ -487,8 +491,16 @@ export default function Implantacao({ setPagina, setClienteDetalheId }) {
   }
 
   const filtradas = implantacoes.filter(i =>
-    i.nomeCliente.toLowerCase().includes(busca.toLowerCase()) ||
-    (i.cnpj || '').includes(busca)
+    i.status !== 'concluida' && (
+      i.nomeCliente.toLowerCase().includes(busca.toLowerCase()) ||
+      (i.cnpj || '').includes(busca)
+    )
+  )
+  const concluidas = implantacoes.filter(i =>
+    i.status === 'concluida' && (
+      i.nomeCliente.toLowerCase().includes(busca.toLowerCase()) ||
+      (i.cnpj || '').includes(busca)
+    )
   )
 
   const progresso = (imp) => {
@@ -566,7 +578,10 @@ export default function Implantacao({ setPagina, setClienteDetalheId }) {
                 ) : (
                   <span style={{ ...s.etapaBadge, background: 'rgba(34,197,94,0.1)', color: '#2DAA59' }}>Concluído ✓</span>
                 )}
-                <p style={{ ...s.labelMini, marginTop: '10px' }}>Progresso</p>
+                <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginTop:'10px', marginBottom:'4px' }}>
+                  <p style={{ ...s.labelMini, margin:0 }}>Progresso</p>
+                  <span style={{ fontSize:'0.75rem', fontWeight:'700', color: pct >= 70 ? 'var(--verde)' : pct >= 30 ? '#f59e0b' : '#f87171', fontFamily:'Inter,sans-serif' }}>{pct}%</span>
+                </div>
                 <div style={s.baraBg}>
                   <div style={{ ...s.baraFill, width: `${pct}%` }} />
                 </div>
@@ -581,6 +596,51 @@ export default function Implantacao({ setPagina, setClienteDetalheId }) {
           </div>
         </div>
       )}
+
+      {/* Seção concluídos colapsável */}
+      {concluidas.length > 0 && (
+          <div style={{ marginTop: '32px' }}>
+            <button
+              onClick={() => setConcluídosAbertos(v => !v)}
+              style={{ display:'flex', alignItems:'center', gap:'10px', width:'100%', background:'none', border:'none', cursor:'pointer', padding:'0 0 12px' }}
+            >
+              <div style={{ flex:1, height:'1px', background:'var(--borda)' }}/>
+              <span style={{ display:'flex', alignItems:'center', gap:'6px', fontSize:'0.75rem', fontWeight:'600', color:'var(--texto-apagado)', fontFamily:'Inter,sans-serif', whiteSpace:'nowrap', padding:'0 4px' }}>
+                <Icone.CheckCircle size={13} style={{ color:'var(--verde)' }}/>
+                Concluídos ({concluidas.length})
+                <span style={{ fontSize:'10px', transition:'transform 0.2s', display:'inline-block', transform: concluídosAbertos ? 'rotate(90deg)' : 'rotate(0deg)' }}>▶</span>
+              </span>
+              <div style={{ flex:1, height:'1px', background:'var(--borda)' }}/>
+            </button>
+            {concluídosAbertos && (
+              <div style={{ ...s.grid, opacity: 0.7 }}>
+                {concluidas.map(imp => {
+                  const pct = progresso(imp)
+                  return (
+                    <div key={imp._id} style={{ ...s.card, borderColor:'rgba(0,177,65,0.15)' }} onClick={() => setDetalheSelecionado(imp)}>
+                      <div style={s.cardTopo}>
+                        <div style={s.avatar}>{iniciais(imp.nomeCliente)}</div>
+                        <div style={{ flex:1, minWidth:0 }}>
+                          <p style={s.cardNome}>{imp.nomeCliente}</p>
+                          {imp.cnpj && <p style={s.cardCnpj}>{imp.cnpj}</p>}
+                        </div>
+                      </div>
+                      <hr style={s.divisor} />
+                      <span style={{ ...s.etapaBadge, background:'rgba(0,177,65,0.1)', color:'var(--verde)', fontSize:'0.75rem' }}>
+                        Concluído ✓
+                      </span>
+                      <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginTop:'10px', marginBottom:'4px' }}>
+                        <p style={{ ...s.labelMini, margin:0 }}>Progresso</p>
+                        <span style={{ fontSize:'0.75rem', fontWeight:'700', color:'var(--verde)', fontFamily:'Inter,sans-serif' }}>100%</span>
+                      </div>
+                      <div style={s.baraBg}><div style={{ ...s.baraFill, width:'100%' }} /></div>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+          </div>
+        )}
 
       {modalAberto && (
         <ModalNovaImplantacao fechar={() => setModalAberto(false)} onCriado={buscar} />

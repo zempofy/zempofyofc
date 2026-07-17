@@ -86,6 +86,36 @@ const limitadorAuth = rateLimit({
 app.use('/api/auth/login', limitadorAuth);
 app.use('/api/auth/cadastro', limitadorAuth);
 
+// ── Job: alerta de onboarding parado ──
+const verificarOnboardingsParados = async () => {
+  try {
+    const Implantacao = require('./models/Implantacao');
+    const Usuario = require('./models/Usuario');
+    const { enviarAlertaOnboardingParado } = require('./services/email');
+    const implantacoes = await Implantacao.find({ status: { $ne: 'concluida' } })
+      .populate('empresa', 'nome alertaOnboardingDias');
+    for (const imp of implantacoes) {
+      const diasPadrao = imp.empresa?.alertaOnboardingDias || 7;
+      const ultimaAtt = new Date(imp.updatedAt || imp.criadoEm);
+      const diasParado = Math.floor((new Date() - ultimaAtt) / 86400000);
+      if (diasParado >= diasPadrao) {
+        const titular = await Usuario.findOne({ empresa: imp.empresa._id, cargo: 'admin' }).select('email nome');
+        if (!titular?.email) continue;
+        const etapaAtual = imp.etapas?.find(e => e.status === 'em_andamento');
+        await enviarAlertaOnboardingParado({
+          destinatario: titular.email,
+          nomeCliente: imp.nomeCliente,
+          diasParado,
+          etapaAtual: etapaAtual?.nome || 'Aguardando',
+          empresa: imp.empresa?.nome || '',
+        });
+      }
+    }
+  } catch(e) { console.error('Job onboarding parado:', e.message); }
+};
+// Rodar às 8h todos os dias
+setInterval(() => { if (new Date().getHours() === 8) verificarOnboardingsParados(); }, 3600000);
+
 // ── Rotas ──
 app.use('/api/auth', authRoutes);
 app.use('/api/empresa', empresaRoutes);

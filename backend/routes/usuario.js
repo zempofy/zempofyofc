@@ -1,5 +1,6 @@
 const express = require('express');
 const registrarLog = require('../services/log');
+const { enviarBoasVindas } = require('../services/email');
 const { autenticar, apenasAdmin } = require('../middleware/auth');
 const { enviarVerificacaoEmail } = require('../services/email');
 const crypto = require('crypto');
@@ -61,8 +62,11 @@ router.get('/', autenticar, async (req, res) => {
   }
 });
 
-// POST /api/usuarios — só o titular cria colaboradores
-router.post('/', autenticar, apenasAdmin, async (req, res) => {
+// POST /api/usuarios — titular ou colaborador com permissão gerenciarMembros
+router.post('/', autenticar, async (req, res) => {
+  const isAdmin = req.usuario.cargo === 'admin'
+  const temPermissao = req.usuario.permissoes?.gerenciarMembros
+  if (!isAdmin && !temPermissao) return res.status(403).json({ erro: 'Sem permissão para adicionar membros.' });
   const { nome, email, senha, permissoes, setores } = req.body;
   if (!nome || !email || !senha) return res.status(400).json({ erro: 'Preencha todos os campos.' });
   if (!setores || setores.length === 0) return res.status(400).json({ erro: 'Selecione pelo menos um setor.' });
@@ -81,7 +85,21 @@ router.post('/', autenticar, apenasAdmin, async (req, res) => {
     });
     // Envia e-mail de verificação pro colaborador
     setImmediate(() => enviarVerificacaoEmail({ destinatario: email, nome, token: tokenVerif }));
-    registrarLog({ empresa: req.usuario.empresa._id, usuario: req.usuario._id, tipo: 'membro_adicionado', descricao: 'Adicionou ' + nome + ' à equipe', meta: { nome, email } });
+    // E-mail de boas-vindas
+    setImmediate(async () => {
+      try {
+        const Empresa = require('../models/Empresa');
+        const empresa = await Empresa.findById(req.usuario.empresa._id).select('nome');
+        await enviarBoasVindas({
+          destinatario: email,
+          nome,
+          nomeEmpresa: empresa?.nome || 'seu escritório',
+          nomeConvidadoPor: req.usuario.nome,
+          senha,
+        });
+      } catch(e) {}
+    });
+    registrarLog({ empresa: req.usuario.empresa._id, usuario: req.usuario._id, tipo: 'membro_adicionado', categoria: 'equipe', descricao: 'Adicionou ' + nome + ' à equipe', meta: { nome, email } });
     res.status(201).json({ id: usuario._id, nome: usuario.nome, email: usuario.email, cargo: usuario.cargo, permissoes: usuario.permissoes });
   } catch (err) {
     res.status(500).json({ erro: 'Erro ao criar usuário.' });

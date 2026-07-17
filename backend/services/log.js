@@ -13,6 +13,7 @@ const CATEGORIAS = {
   cliente_criado:              'cliente',
   cliente_editado:             'cliente',
   cliente_excluido:            'cliente',
+  clientes_importados:         'cliente',
   membro_adicionado:           'equipe',
   membro_removido:             'equipe',
   tarefa_concluida:            'tarefa',
@@ -24,7 +25,7 @@ async function registrarLog({ empresa, usuario, tipo, descricao, meta = {} }) {
       empresa,
       usuario,
       tipo,
-      categoria: CATEGORIAS[tipo] || 'outros',
+      categoria: CATEGORIAS[tipo] || 'onboarding',
       descricao,
       meta,
     });

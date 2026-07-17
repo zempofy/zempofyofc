@@ -12,7 +12,6 @@ import Chat from '../components/Chat'
 import Anotacoes from '../components/Anotacoes'
 import Mural from '../components/Mural'
 import Avatar from '../components/Avatar'
-import Relatorios from '../components/Relatorios'
 import Implantacao from '../components/Implantacao'
 import ModelosOnboarding from '../components/ModelosOnboarding'
 import Setores from '../components/Setores'
@@ -21,6 +20,8 @@ import Clientes from '../components/Clientes'
 import Servicos from '../components/Servicos'
 import Obrigacoes from '../components/Obrigacoes'
 import CRM from '../components/CRM'
+import ConfigAlertas from '../components/ConfigAlertas'
+import PaginaInicio from '../components/PaginaInicio'
 
 // ============ PÁGINAS INTERNAS ============
 
@@ -211,342 +212,6 @@ const stylesGuia = {
   passoDesc: { fontSize: '0.72rem', color: 'var(--texto-apagado)', margin: '2px 0 0' },
   seta: { fontSize: '0.85rem', color: 'var(--verde)', flexShrink: 0 },
 }
-
-function PaginaInicio({ usuario, tarefas, funcionarios, setPagina }) {
-  const [avisos, setAvisos] = useState([])
-  const hoje = new Date().toISOString().split('T')[0]
-
-  const pendentes = tarefas.filter(t => t.status === 'pendente').length
-  const concluidas = tarefas.filter(t => t.status === 'concluida').length
-  const taxa = tarefas.length > 0 ? Math.round((concluidas / tarefas.length) * 100) : 0
-  const tarefasHoje = tarefas.filter(t => t.data === hoje && t.status === 'pendente')
-
-  useEffect(() => {
-    api.get('/mural').then(r => setAvisos(r.data.slice(0, 3))).catch(() => {})
-  }, [])
-  const empresaId = usuario?.empresa?._id || usuario?.empresa || 'default'
-
-  const metricas = [
-    {
-      label: 'Colaboradores',
-      valor: funcionarios.length,
-      icone: <Icone.Users size={18} />,
-      cor: 'rgba(255,255,255,0.5)',
-      desc: 'membros ativos',
-    },
-    {
-      label: 'Tarefas pendentes',
-      valor: pendentes,
-      icone: <Icone.ClipboardList size={18} />,
-      cor: '#fbbf24',
-      desc: 'aguardando conclusão',
-    },
-    {
-      label: 'Concluídas',
-      valor: concluidas,
-      icone: <Icone.CheckCircle size={18} />,
-      cor: 'rgba(255,255,255,0.5)',
-      desc: 'tarefas finalizadas',
-    },
-    {
-      label: 'Taxa de conclusão',
-      valor: taxa + '%',
-      icone: <Icone.BarChart size={18} />,
-      cor: 'var(--verde)',
-      destaque: true,
-      desc: 'do total de tarefas',
-    },
-  ]
-
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '32px' }}>
-
-      {/* ── Guia de primeiros passos ── */}
-      <GuiaPrimeirosPassos setPagina={setPagina} empresaId={empresaId} />
-
-      {/* ── Cabeçalho ── */}
-      <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between' }}>
-        <div>
-          <p style={{ fontSize: '0.72rem', fontWeight: '600', color: 'var(--verde)', textTransform: 'uppercase', letterSpacing: '1.5px', marginBottom: '6px' }}>
-            {usuario.empresa.nome}
-          </p>
-          <h1 style={{ fontSize: '1.9rem', fontWeight: '700', color: 'var(--texto)', letterSpacing: '-0.04em', lineHeight: 1.1 }}>
-            {saudacao(usuario.nome)}
-          </h1>
-        </div>
-        <div style={{ textAlign: 'right' }}>
-          <p style={{ fontSize: '0.75rem', color: 'var(--texto-apagado)' }}>
-            {new Date().toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'long' })}
-          </p>
-        </div>
-      </div>
-
-      {/* ── Métricas ── */}
-      <div style={stylesInicio.metricas}>
-        {metricas.map((m, i) => (
-          <div key={i} style={{
-            ...stylesInicio.metricaCard,
-            ...(m.destaque ? stylesInicio.metricaDestaque : {}),
-          }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
-              <span style={{ fontSize: '0.65rem', fontWeight: '700', color: m.destaque ? 'rgba(0,177,65,0.7)' : 'var(--texto-apagado)', textTransform: 'uppercase', letterSpacing: '1.2px' }}>
-                {m.label}
-              </span>
-              <span style={{ color: m.cor, opacity: 0.7 }}>{m.icone}</span>
-            </div>
-            <p style={{ fontSize: '2.4rem', fontWeight: '700', color: m.destaque ? 'var(--verde)' : 'var(--texto)', letterSpacing: '-0.04em', lineHeight: 1, marginBottom: '6px' }}>
-              {m.valor}
-            </p>
-            <p style={{ fontSize: '0.72rem', color: m.destaque ? 'rgba(0,177,65,0.6)' : 'var(--texto-apagado)' }}>{m.desc}</p>
-          </div>
-        ))}
-      </div>
-
-      {/* ── Grade inferior ── */}
-      <div style={stylesInicio.grade}>
-
-        {/* Tarefas de hoje */}
-        <div style={stylesInicio.bloco}>
-          <div style={stylesInicio.blocoTopo}>
-            <div>
-              <p style={stylesInicio.blocoLabel}>Tarefas de hoje</p>
-              <p style={stylesInicio.blocoSub}>{tarefasHoje.length} pendente{tarefasHoje.length !== 1 ? 's' : ''}</p>
-            </div>
-            <button style={stylesInicio.btnLink} onClick={() => setPagina('tarefas')}>Ver todas →</button>
-          </div>
-
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0' }}>
-            {tarefasHoje.length === 0 ? (
-              <div style={stylesInicio.vazio}>
-                <div style={stylesInicio.vazioIcone}><Icone.CheckCircle size={20} /></div>
-                <p style={stylesInicio.vazioTexto}>Nenhuma tarefa para hoje</p>
-              </div>
-            ) : tarefasHoje.slice(0, 5).map((t, i) => (
-              <div key={t._id} style={{
-                ...stylesInicio.tarefaLinha,
-                borderBottom: i < Math.min(tarefasHoje.length, 5) - 1 ? '1px solid var(--borda-sutil)' : 'none',
-              }}>
-                <div style={stylesInicio.tarefaDot} />
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <p style={stylesInicio.tarefaTexto}>{t.descricao}</p>
-                  {(t.hora || t.responsavel?.nome) && (
-                    <p style={stylesInicio.tarefaMeta}>
-                      {t.hora}{t.hora && t.responsavel?.nome ? ' · ' : ''}{t.responsavel?.nome}
-                    </p>
-                  )}
-                </div>
-                {t.prioridade === 'alta' && (
-                  <span style={stylesInicio.badgeAlta}>Alta</span>
-                )}
-              </div>
-            ))}
-            {tarefasHoje.length > 5 && (
-              <p style={{ color: 'var(--texto-apagado)', fontSize: '0.75rem', textAlign: 'center', padding: '12px 0 4px' }}>
-                +{tarefasHoje.length - 5} tarefas
-              </p>
-            )}
-          </div>
-        </div>
-
-        {/* Mural de avisos */}
-        <div style={stylesInicio.bloco}>
-          <div style={stylesInicio.blocoTopo}>
-            <div>
-              <p style={stylesInicio.blocoLabel}>Mural de avisos</p>
-              <p style={stylesInicio.blocoSub}>{avisos.length} publicaç{avisos.length !== 1 ? 'ões' : 'ão'} recente{avisos.length !== 1 ? 's' : ''}</p>
-            </div>
-            <button style={stylesInicio.btnLink} onClick={() => setPagina('mural')}>Ver todos →</button>
-          </div>
-
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-            {avisos.length === 0 ? (
-              <div style={stylesInicio.vazio}>
-                <div style={stylesInicio.vazioIcone}><Icone.Bell size={20} /></div>
-                <p style={stylesInicio.vazioTexto}>Nenhum aviso publicado</p>
-              </div>
-            ) : avisos.map(a => (
-              <div key={a._id} style={stylesInicio.avisoCard}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '5px' }}>
-                  {a.fixado && <span style={stylesInicio.badgeFixado}>Fixado</span>}
-                  <p style={stylesInicio.avisoTitulo}>{a.titulo}</p>
-                </div>
-                <p style={stylesInicio.avisoTexto}>{a.texto.slice(0, 90)}{a.texto.length > 90 ? '...' : ''}</p>
-                <p style={stylesInicio.avisoMeta}>{a.autor?.nome} · {new Date(a.criadoEm).toLocaleDateString('pt-BR')}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-
-      </div>
-    </div>
-  )
-}
-
-// Styles exclusivos da PaginaInicio
-const stylesInicio = {
-  metricas: {
-    display: 'grid',
-    gridTemplateColumns: 'repeat(4, 1fr)',
-    gap: '12px',
-  },
-  metricaCard: {
-    background: 'var(--card)',
-    border: '1px solid var(--borda)',
-    borderRadius: '14px',
-    padding: '22px 24px',
-    transition: 'border-color 0.2s',
-  },
-  metricaDestaque: {
-    background: 'rgba(0,177,65,0.05)',
-    border: '1px solid rgba(0,177,65,0.2)',
-  },
-  grade: {
-    display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
-    gap: '16px',
-  },
-  bloco: {
-    background: 'var(--card)',
-    border: '1px solid var(--borda)',
-    borderRadius: '14px',
-    padding: '24px',
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '20px',
-  },
-  blocoTopo: {
-    display: 'flex',
-    alignItems: 'flex-start',
-    justifyContent: 'space-between',
-  },
-  blocoLabel: {
-    fontSize: '0.85rem',
-    fontWeight: '600',
-    color: 'var(--texto)',
-    letterSpacing: '-0.01em',
-    marginBottom: '2px',
-  },
-  blocoSub: {
-    fontSize: '0.72rem',
-    color: 'var(--texto-apagado)',
-  },
-  btnLink: {
-    background: 'none',
-    border: 'none',
-    color: 'var(--verde)',
-    fontSize: '0.75rem',
-    fontWeight: '600',
-    cursor: 'pointer',
-    fontFamily: 'Inter, sans-serif',
-    whiteSpace: 'nowrap',
-    padding: '2px 0',
-  },
-  vazio: {
-    display: 'flex',
-    flexDirection: 'column',
-    alignItems: 'center',
-    gap: '8px',
-    padding: '28px 0',
-    color: 'var(--texto-apagado)',
-  },
-  vazioIcone: {
-    width: '40px', height: '40px',
-    borderRadius: '10px',
-    background: 'var(--input)',
-    display: 'flex', alignItems: 'center', justifyContent: 'center',
-    color: 'var(--texto-apagado)',
-  },
-  vazioTexto: {
-    fontSize: '0.82rem',
-    color: 'var(--texto-apagado)',
-  },
-  tarefaLinha: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '12px',
-    padding: '11px 0',
-  },
-  tarefaDot: {
-    width: '6px', height: '6px',
-    borderRadius: '50%',
-    background: '#fbbf24',
-    flexShrink: 0,
-  },
-  tarefaTexto: {
-    fontSize: '0.85rem',
-    color: 'var(--texto)',
-    lineHeight: '1.3',
-    margin: 0,
-    whiteSpace: 'nowrap',
-    overflow: 'hidden',
-    textOverflow: 'ellipsis',
-  },
-  tarefaMeta: {
-    fontSize: '0.72rem',
-    color: 'var(--texto-apagado)',
-    margin: '2px 0 0',
-  },
-  badgeAlta: {
-    fontSize: '0.6rem', fontWeight: '700',
-    color: '#f87171',
-    background: 'rgba(248,113,113,0.1)',
-    border: '1px solid rgba(248,113,113,0.2)',
-    borderRadius: '5px',
-    padding: '2px 6px',
-    flexShrink: 0,
-  },
-  avisoCard: {
-    background: 'var(--input)',
-    borderRadius: '10px',
-    padding: '12px 14px',
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '3px',
-  },
-  badgeFixado: {
-    fontSize: '0.6rem', fontWeight: '700',
-    color: 'var(--verde)',
-    background: 'var(--verde-glow)',
-    border: '1px solid rgba(0,177,65,0.2)',
-    borderRadius: '5px',
-    padding: '2px 6px',
-    flexShrink: 0,
-  },
-  avisoTitulo: {
-    fontSize: '0.85rem',
-    fontWeight: '600',
-    color: 'var(--texto)',
-    margin: 0,
-  },
-  avisoTexto: {
-    fontSize: '0.78rem',
-    color: 'var(--texto-apagado)',
-    margin: 0,
-    lineHeight: '1.45',
-  },
-  avisoMeta: {
-    fontSize: '0.68rem',
-    color: 'var(--texto-apagado)',
-    margin: '4px 0 0',
-    opacity: 0.7,
-  },
-}
-
-const PERMISSOES_LABELS = [
-  { key: 'gerenciarEquipe', label: 'Gerenciar equipe', desc: 'Acesso à gestão do escritório', subpermissoes: [
-    { key: 'gerenciarMembros', label: 'Gerenciar membros da equipe', desc: 'Adicionar, editar e remover colaboradores' },
-    { key: 'gerenciarSetores', label: 'Gerenciar setores',           desc: 'Criar, editar e remover setores do escritório' },
-  ]},
-  { key: 'gerenciarOnboarding', label: 'Gerenciar onboarding',       desc: 'Acesso ao módulo de onboarding', subpermissoes: [
-    { key: 'criarImplantacoes',        label: 'Criar e excluir implantações', desc: 'Iniciar e remover onboardings de clientes' },
-    { key: 'gerenciarModelos',         label: 'Criar, editar e excluir modelos', desc: 'Gerenciar templates de onboarding' },
-    { key: 'gerenciarBancoAtividades', label: 'Criar, editar e excluir atividades', desc: 'Gerenciar o banco de atividades' },
-  ]},
-  { key: 'gerenciarClientes',   label: 'Gerenciar clientes',         desc: 'Ver e editar carteira de clientes' },
-  { key: 'verRelatorios',       label: 'Ver relatórios',             desc: 'Métricas e dados da equipe' },
-  { key: 'publicarMural',       label: 'Publicar no mural',          desc: 'Postar avisos para a equipe' },
-  { key: 'criarTarefas',        label: 'Criar tarefas para outros',  desc: 'Atribuir tarefas a outros colaboradores' },
-]
 
 function CheckItem({ ativo, label, desc, onClick, sub = false }) {
   return (
@@ -824,6 +489,16 @@ function PaginaEquipe({ usuario, equipe, recarregar }) {
                 <div style={{ flex: 1 }}>
                   <p style={styles.nomeFunc}>{f.nome}</p>
                   <p style={styles.emailFunc}>{f.email}</p>
+                  {f.setores?.length > 0 && (
+                    <div style={{ display:'flex', gap:'4px', flexWrap:'wrap', marginTop:'4px' }}>
+                      {f.setores.map(setor => (
+                        <span key={setor._id||setor} style={{ fontSize:'0.6rem', fontWeight:'600', padding:'1px 7px', borderRadius:'4px', background:'var(--input)', color:'var(--texto-apagado)', border:'1px solid var(--borda)', display:'flex', alignItems:'center', gap:'4px' }}>
+                          <div style={{ width:'5px', height:'5px', borderRadius:'50%', background:setor.cor||'var(--verde)', flexShrink:0 }}/>
+                          {setor.nome||setor}
+                        </span>
+                      ))}
+                    </div>
+                  )}
                 </div>
                 <span style={{ ...styles.badgeCargo, color: 'var(--texto-apagado)', display: 'flex', alignItems: 'center', gap: '4px' }}>
                   <Icone.User size={12} /> Colaborador
@@ -1203,6 +878,18 @@ function PopupOnboardingAdmin({ tarefaId, onFechar }) {
   )
 }
 
+// Cache de feriados
+let feriadosCache = {};
+const buscarFeriados = async (ano) => {
+  if (feriadosCache[ano]) return feriadosCache[ano];
+  try {
+    const r = await fetch(`https://brasilapi.com.br/api/feriados/v1/${ano}`);
+    const data = await r.json();
+    feriadosCache[ano] = data.map(f => f.date);
+    return feriadosCache[ano];
+  } catch { return []; }
+};
+
 function PaginaTarefas({ tarefas, funcionarios, recarregar }) {
   const [mostrarForm, setMostrarForm] = useState(false)
   const [form, setForm] = useState({ descricao: '', data: '', hora: '', local: '', responsavelId: '', prioridade: '' })
@@ -1443,9 +1130,22 @@ function PaginaTarefas({ tarefas, funcionarios, recarregar }) {
               <label style={styles.label}>Local</label>
               <input style={styles.input} placeholder="Ex: Escritório, Loja..." value={form.local} onChange={e => setForm({ ...form, local: e.target.value })} />
             </div>
-            <div style={styles.campo}>
+            <div style={{ ...styles.campo, position:'relative' }}>
               <label style={styles.label}>Data</label>
-              <input style={styles.input} type="date" value={form.data} onChange={e => setForm({ ...form, data: e.target.value })} />
+              <input style={styles.input} type="date" value={form.data} onChange={async e => {
+                const val = e.target.value;
+                setForm({ ...form, data: val });
+                if (val) {
+                  const ano = val.split('-')[0];
+                  const feriados = await buscarFeriados(ano);
+                  setForm(f => ({ ...f, data: val, _isFeriado: feriados.includes(val) }));
+                }
+              }} />
+              {form._isFeriado && (
+                <p style={{ fontSize:'0.72rem', color:'#f59e0b', margin:'4px 0 0', fontFamily:'Inter,sans-serif', display:'flex', alignItems:'center', gap:'4px', position:'absolute', bottom:'-20px', left:0, whiteSpace:'nowrap' }}>
+                  <Icone.AlertTriangle size={11}/> Este dia é feriado nacional
+                </p>
+              )}
             </div>
             <div style={styles.campo}>
               <label style={styles.label}>Hora</label>
@@ -1888,10 +1588,7 @@ export default function DashboardAdmin() {
       { id: 'clientes', label: 'Clientes', icone: <Icone.Users size={16} /> }
     ] : []),
 
-    // Obrigações
-    ...(isTitular || temPermissao('gerenciarClientes') ? [
-      { id: 'obrigacoes', label: 'Obrigações', icone: <Icone.CheckCircle size={16} /> }
-    ] : []),
+
 
     // Separador — Pessoal
     { id: '__sep_pessoal', separador: true, label: 'Pessoal' },
@@ -1907,10 +1604,7 @@ export default function DashboardAdmin() {
       { id: '__sep_analise', separador: true, label: 'Análise' }
     ] : []),
 
-    // Relatórios
-    ...(isTitular || temPermissao('verRelatorios') ? [
-      { id: 'relatorios', label: 'Relatórios', icone: <Icone.BarChart size={16} /> }
-    ] : []),
+
 
     // Histórico — sempre visível
     { id: 'historico', label: 'Histórico', icone: <Icone.Clock size={16} /> },
@@ -1918,7 +1612,8 @@ export default function DashboardAdmin() {
 
   const renderPagina = () => {
     if (pagina === 'crm') return <CRM />
-    if (pagina === 'inicio') return <PaginaInicio usuario={usuario} tarefas={tarefas} funcionarios={funcionarios} setPagina={setPagina} />
+    if (pagina === 'alertas-onboarding') return <ConfigAlertas />
+    if (pagina === 'inicio') return <PaginaInicio usuario={usuario} setPagina={setPagina} isTitular={true} temPermissao={temPermissao} />
     if (pagina === 'equipe') return <PaginaEquipe usuario={usuario} equipe={funcionarios} recarregar={carregarDados} />
     if (pagina === 'tarefas') return <PaginaTarefas tarefas={tarefas} funcionarios={funcionarios} recarregar={carregarDados} />
     if (pagina === 'historico') return <PaginaHistorico />
@@ -1926,7 +1621,6 @@ export default function DashboardAdmin() {
     if (pagina === 'clientes') return <Clientes detalheInicial={clienteDetalheId} abaInicial="onboardings" onDetalheAberto={()=>setClienteDetalheId(null)} />
     if (pagina === 'chat') return <Chat setPagina={setPagina} />
     if (pagina === 'anotacoes') return <Anotacoes />
-    if (pagina === 'relatorios') return <Relatorios />
     if (pagina === 'mural') return <Mural />
     if (pagina === 'implantacao') return <Implantacao setPagina={setPagina} setClienteDetalheId={setClienteDetalheId} />
     if (pagina === 'modelos') return <ModelosOnboarding />

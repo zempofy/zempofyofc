@@ -148,7 +148,7 @@ router.post('/', autenticar, async (req, res) => {
 
     const populada = await populateImplantacao(ImplantacaoModel.findById(implantacao._id));
     res.status(201).json(populada);
-    registrarLog({ empresa: req.usuario.empresa._id, usuario: req.usuario._id, tipo: 'implantacao_criada', descricao: `Criou a implantação de ${nomeCliente.trim()}`, meta: { nomeCliente } });
+    registrarLog({ empresa: req.usuario.empresa._id, usuario: req.usuario._id, tipo: 'implantacao_criada', categoria: 'onboarding', descricao: `Criou a implantação de ${nomeCliente.trim()}`, meta: { nomeCliente } });
 
     // Vinculação automática com cliente
     if (cnpj?.trim()) {
@@ -343,7 +343,7 @@ router.delete('/:id', autenticar, async (req, res) => {
     }
 
     const impDel = await ImplantacaoModel.findByIdAndDelete(req.params.id);
-    if (impDel) registrarLog({ empresa: req.usuario.empresa._id, usuario: req.usuario._id, tipo: 'implantacao_excluida', descricao: `Excluiu a implantação de ${impDel.nomeCliente}`, meta: { nomeCliente: impDel.nomeCliente } });
+    if (impDel) registrarLog({ empresa: req.usuario.empresa._id, usuario: req.usuario._id, tipo: 'implantacao_excluida', categoria: 'onboarding', descricao: `Excluiu a implantação de ${impDel.nomeCliente}`, meta: { nomeCliente: impDel.nomeCliente } });
     res.json({ mensagem: 'Implantação excluída com sucesso.' });
   } catch (err) {
     console.error(err);

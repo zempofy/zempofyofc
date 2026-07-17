@@ -477,6 +477,10 @@ export default function Layout({ children, menuItens, paginaAtual, setPagina }) 
   const isTitular = usuario?.cargo === 'admin'
   const [sidebarAberta, setSidebarAberta] = useState(true)
   const [painelAberto, setPainelAberto] = useState(false)
+  const [buscaGlobal, setBuscaGlobal] = useState('')
+  const [resultadosBusca, setResultadosBusca] = useState([])
+  const [buscandoGlobal, setBuscandoGlobal] = useState(false)
+  const [paginaBuscaAberta, setPaginaBuscaAberta] = useState(false)
   const [modalAcesso, setModalAcesso] = useState(false)
   const [modalConfig, setModalConfig] = useState(false)
   const [naoLidasChat, setNaoLidasChat] = useState(0)
@@ -530,6 +534,40 @@ export default function Layout({ children, menuItens, paginaAtual, setPagina }) 
           <button style={styles.logoBtn} onClick={() => setPagina('inicio')} title="Ir para início">
             <img src="/logo-branca.png" alt="Zempofy" style={{ height: '36px', width: 'auto' }} />
           </button>
+        </div>
+
+        {/* Busca global */}
+        <div style={{ position:'relative', flex:'0 0 240px' }}>
+          <div style={{ display:'flex', alignItems:'center', gap:'8px', background:'rgba(255,255,255,0.06)', border:'1px solid rgba(255,255,255,0.1)', borderRadius:'8px', padding:'6px 12px' }}>
+            <Icone.Search size={13} style={{ color:'rgba(255,255,255,0.4)', flexShrink:0 }}/>
+            <input
+              style={{ background:'none', border:'none', outline:'none', color:'rgba(255,255,255,0.8)', fontSize:'0.82rem', fontFamily:'Inter,sans-serif', width:'100%' }}
+              placeholder="Buscar clientes, onboardings..."
+              value={buscaGlobal}
+              onChange={e=>{ setBuscaGlobal(e.target.value); buscarGlobal(e.target.value) }}
+              onKeyDown={e=>{ if(e.key==='Escape'){ setBuscaGlobal(''); setResultadosBusca([]) } }}
+              onBlur={()=>setTimeout(()=>{ setBuscaGlobal(''); setResultadosBusca([]) }, 150)}
+            />
+          </div>
+          {resultadosBusca.length > 0 && (
+            <div style={{ position:'absolute', top:'calc(100% + 6px)', left:0, right:0, background:'#18181b', border:'1px solid #27272a', borderRadius:'10px', boxShadow:'0 12px 32px rgba(0,0,0,0.5)', zIndex:200, overflow:'hidden' }}>
+              {resultadosBusca.map((r,i) => (
+                <button key={i} onMouseDown={()=>{ setPagina(r.pagina); setResultadosBusca([]); setBuscaGlobal('') }}
+                  style={{ display:'flex', alignItems:'center', gap:'10px', width:'100%', padding:'9px 14px', background:'none', border:'none', borderBottom:'1px solid #27272a', cursor:'pointer', textAlign:'left' }}
+                  onMouseEnter={e=>e.currentTarget.style.background='#27272a'}
+                  onMouseLeave={e=>e.currentTarget.style.background='none'}
+                >
+                  <span style={{ color:'rgba(255,255,255,0.4)', flexShrink:0 }}>
+                    {r.tipo==='cliente' ? <Icone.Users size={13}/> : <Icone.ClipboardList size={13}/>}
+                  </span>
+                  <div>
+                    <p style={{ fontSize:'0.82rem', fontWeight:'600', color:'#fff', margin:0, fontFamily:'Inter,sans-serif' }}>{r.label}</p>
+                    <p style={{ fontSize:'0.68rem', color:'rgba(255,255,255,0.4)', margin:0, fontFamily:'Inter,sans-serif' }}>{r.sub}</p>
+                  </div>
+                </button>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Ações + avatar */}
@@ -693,6 +731,7 @@ export default function Layout({ children, menuItens, paginaAtual, setPagina }) 
               {[
                 ...(isTitular || temPermissao('gerenciarModelos') ? [{ id: 'modelos', label: 'Modelos', icone: <Icone.ClipboardList size={16} /> }] : []),
                 ...(isTitular || temPermissao('gerenciarBancoAtividades') ? [{ id: 'checklist', label: 'Banco de atividades', icone: <Icone.Edit size={16} /> }] : []),
+                ...(isTitular ? [{ id: 'alertas-onboarding', label: 'Alertas', icone: <Icone.AlertTriangle size={16} /> }] : []),
               ].map(item => (
                 <button key={item.id} style={{
                   ...styles.configItem,

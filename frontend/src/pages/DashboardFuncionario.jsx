@@ -14,6 +14,7 @@ import Implantacao from '../components/Implantacao'
 import ModelosOnboarding from '../components/ModelosOnboarding'
 import BancoAtividades from '../components/BancoAtividades'
 import Obrigacoes from '../components/Obrigacoes'
+import PaginaInicio from '../components/PaginaInicio'
 import Servicos from '../components/Servicos'
 import Clientes from '../components/Clientes'
 import Setores from '../components/Setores'
@@ -282,7 +283,20 @@ function PaginaMinhasTarefas({ tarefas, recarregar, modo = 'onboarding' }) {
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
               <label style={styles.label}>Data</label>
-              <input style={styles.input} type="date" value={form.data} onChange={e => setForm({ ...form, data: e.target.value })} />
+              <input style={styles.input} type="date" value={form.data} onChange={async e => {
+                const val = e.target.value;
+                setForm(f => ({ ...f, data: val }));
+                if (val) {
+                  const ano = val.split('-')[0];
+                  const feriados = await buscarFeriados(ano);
+                  setForm(f => ({ ...f, data: val, _isFeriado: feriados.includes(val) }));
+                }
+              }} />
+              {form._isFeriado && (
+                <p style={{ fontSize:'0.72rem', color:'#f59e0b', margin:'4px 0 0', fontFamily:'Inter,sans-serif', display:'flex', alignItems:'center', gap:'4px' }}>
+                  ⚠️ Este dia é feriado nacional
+                </p>
+              )}
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
               <label style={styles.label}>Hora</label>
@@ -355,138 +369,6 @@ function PaginaMinhasTarefas({ tarefas, recarregar, modo = 'onboarding' }) {
   )
 }
 
-function PaginaInicio({ usuario, tarefas, setPagina }) {
-  const [avisos, setAvisos] = useState([])
-  const hoje = new Date().toISOString().split('T')[0]
-  const h = new Date().getHours()
-  const saudacao = h < 12 ? 'Bom dia' : h < 18 ? 'Boa tarde' : 'Boa noite'
-
-  const pendentes = tarefas.filter(t => t.status === 'pendente')
-  const concluidas = tarefas.filter(t => t.status === 'concluida')
-  const tarefasHoje = pendentes.filter(t => t.data === hoje)
-  const urgentes = pendentes.filter(t => t.prioridade === 'alta')
-
-  useEffect(() => {
-    api.get('/mural').then(r => setAvisos(r.data.slice(0, 3))).catch(() => {})
-  }, [])
-
-  const metricas = [
-    { label: 'Pendentes', valor: pendentes.length, desc: 'aguardando conclusão', cor: 'rgba(255,255,255,0.5)', icone: <Icone.ClipboardList size={16} /> },
-    { label: 'Para hoje', valor: tarefasHoje.length, desc: 'com prazo hoje', cor: tarefasHoje.length > 0 ? '#fbbf24' : 'rgba(255,255,255,0.5)', destaque: tarefasHoje.length > 0, icone: <Icone.Calendar size={16} /> },
-    { label: 'Concluídas', valor: concluidas.length, desc: 'tarefas finalizadas', cor: 'var(--verde)', icone: <Icone.CheckCircle size={16} /> },
-  ]
-
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '32px' }}>
-
-      {/* Cabeçalho */}
-      <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px' }}>
-        <div>
-          <p style={{ fontSize: '0.72rem', fontWeight: '600', color: 'var(--verde)', textTransform: 'uppercase', letterSpacing: '1.5px', marginBottom: '6px' }}>
-            {usuario.empresa?.nome || 'Zempofy'}
-          </p>
-          <h1 style={{ fontSize: '1.9rem', fontWeight: '700', color: 'var(--texto)', letterSpacing: '-0.04em', lineHeight: 1.1 }}>
-            {saudacao}, {usuario.nome.split(' ')[0]}!
-          </h1>
-        </div>
-        <p style={{ fontSize: '0.75rem', color: 'var(--texto-apagado)' }}>
-          {new Date().toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'long' })}
-        </p>
-      </div>
-
-      {/* Métricas */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px' }}>
-        {metricas.map((m, i) => (
-          <div key={i} style={{
-            background: m.destaque ? 'rgba(245,158,11,0.05)' : 'var(--card)',
-            border: `1px solid ${m.destaque ? 'rgba(245,158,11,0.2)' : 'var(--borda)'}`,
-            borderRadius: '14px', padding: '22px 24px',
-          }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
-              <span style={{ fontSize: '0.65rem', fontWeight: '700', color: m.destaque ? 'rgba(245,158,11,0.7)' : 'var(--texto-apagado)', textTransform: 'uppercase', letterSpacing: '1.2px' }}>
-                {m.label}
-              </span>
-              <span style={{ color: m.cor, opacity: 0.7 }}>{m.icone}</span>
-            </div>
-            <p style={{ fontSize: '2.4rem', fontWeight: '700', color: m.destaque ? '#fbbf24' : m.cor === 'var(--verde)' ? 'var(--verde)' : 'var(--texto)', letterSpacing: '-0.04em', lineHeight: 1, marginBottom: '6px' }}>
-              {m.valor}
-            </p>
-            <p style={{ fontSize: '0.72rem', color: 'var(--texto-apagado)' }}>{m.desc}</p>
-          </div>
-        ))}
-      </div>
-
-      {/* Grade inferior */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '16px' }}>
-
-        {/* Tarefas de hoje */}
-        <div style={{ background: 'var(--card)', border: '1px solid var(--borda)', borderRadius: '14px', padding: '24px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
-          <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
-            <div>
-              <p style={{ fontSize: '0.85rem', fontWeight: '600', color: 'var(--texto)', letterSpacing: '-0.01em', marginBottom: '2px' }}>Tarefas de hoje</p>
-              <p style={{ fontSize: '0.72rem', color: 'var(--texto-apagado)' }}>{tarefasHoje.length} pendente{tarefasHoje.length !== 1 ? 's' : ''}</p>
-            </div>
-            <button style={{ background: 'none', border: 'none', color: 'var(--verde)', fontSize: '0.75rem', fontWeight: '600', cursor: 'pointer', fontFamily: 'Inter, sans-serif' }} onClick={() => setPagina('tarefas-onboarding')}>Ver todas →</button>
-          </div>
-          {tarefasHoje.length === 0 ? (
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px', padding: '24px 0', color: 'var(--texto-apagado)' }}>
-              <div style={{ width: '40px', height: '40px', borderRadius: '10px', background: 'var(--input)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <Icone.CheckCircle size={20} />
-              </div>
-              <p style={{ fontSize: '0.82rem' }}>Nenhuma tarefa para hoje</p>
-            </div>
-          ) : (
-            <div style={{ display: 'flex', flexDirection: 'column' }}>
-              {tarefasHoje.slice(0, 5).map((t, i) => (
-                <div key={t._id} style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '10px 0', borderBottom: i < Math.min(tarefasHoje.length, 5) - 1 ? '1px solid var(--borda)' : 'none' }}>
-                  <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#fbbf24', flexShrink: 0 }} />
-                  <p style={{ fontSize: '0.85rem', color: 'var(--texto)', margin: 0, flex: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{t.descricao}</p>
-                  {t.hora && <span style={{ fontSize: '0.72rem', color: 'var(--texto-apagado)', flexShrink: 0 }}>{t.hora}</span>}
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-
-        {/* Mural */}
-        <div style={{ background: 'var(--card)', border: '1px solid var(--borda)', borderRadius: '14px', padding: '24px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
-          <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
-            <div>
-              <p style={{ fontSize: '0.85rem', fontWeight: '600', color: 'var(--texto)', letterSpacing: '-0.01em', marginBottom: '2px' }}>Mural de avisos</p>
-              <p style={{ fontSize: '0.72rem', color: 'var(--texto-apagado)' }}>{avisos.length} publicaç{avisos.length !== 1 ? 'ões' : 'ão'} recente{avisos.length !== 1 ? 's' : ''}</p>
-            </div>
-            <button style={{ background: 'none', border: 'none', color: 'var(--verde)', fontSize: '0.75rem', fontWeight: '600', cursor: 'pointer', fontFamily: 'Inter, sans-serif' }} onClick={() => setPagina('mural')}>Ver todos →</button>
-          </div>
-          {avisos.length === 0 ? (
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px', padding: '24px 0', color: 'var(--texto-apagado)' }}>
-              <div style={{ width: '40px', height: '40px', borderRadius: '10px', background: 'var(--input)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <Icone.Bell size={20} />
-              </div>
-              <p style={{ fontSize: '0.82rem' }}>Nenhum aviso publicado</p>
-            </div>
-          ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-              {avisos.map(a => (
-                <div key={a._id} style={{ background: 'var(--input)', borderRadius: '10px', padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: '3px' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '3px' }}>
-                    {a.fixado && <span style={{ fontSize: '0.6rem', fontWeight: '700', color: 'var(--verde)', background: 'var(--verde-glow)', border: '1px solid rgba(0,177,65,0.2)', borderRadius: '5px', padding: '2px 6px' }}>Fixado</span>}
-                    <p style={{ fontSize: '0.85rem', fontWeight: '600', color: 'var(--texto)', margin: 0 }}>{a.titulo}</p>
-                  </div>
-                  <p style={{ fontSize: '0.78rem', color: 'var(--texto-apagado)', margin: 0, lineHeight: '1.45' }}>{a.texto.slice(0, 90)}{a.texto.length > 90 ? '...' : ''}</p>
-                  <p style={{ fontSize: '0.68rem', color: 'var(--texto-apagado)', margin: '4px 0 0', opacity: 0.7 }}>{new Date(a.criadoEm).toLocaleDateString('pt-BR')}</p>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-
-      </div>
-    </div>
-  )
-}
-
-
-// Página de equipe simplificada para colaboradores com permissão
 function PaginaEquipeColaborador() {
   const [equipe, setEquipe] = useState([])
   const [carregando, setCarregando] = useState(true)
@@ -644,6 +526,18 @@ function PaginaEquipeColaborador() {
   )
 }
 
+// Cache de feriados
+let feriadosCache = {};
+const buscarFeriados = async (ano) => {
+  if (feriadosCache[ano]) return feriadosCache[ano];
+  try {
+    const r = await fetch(`https://brasilapi.com.br/api/feriados/v1/${ano}`);
+    const data = await r.json();
+    feriadosCache[ano] = data.map(f => f.date);
+    return feriadosCache[ano];
+  } catch { return []; }
+};
+
 export default function DashboardFuncionario() {
   const { usuario, temPermissao } = useAuth()
   const [pagina, setPagina] = useState('inicio')
@@ -699,7 +593,7 @@ export default function DashboardFuncionario() {
 
   return (
     <Layout menuItens={menuItens} paginaAtual={pagina} setPagina={setPagina}>
-      {pagina === 'inicio' && <PaginaInicio usuario={usuario} tarefas={tarefas} setPagina={setPagina} />}
+      {pagina === 'inicio' && <PaginaInicio usuario={usuario} setPagina={setPagina} isTitular={false} temPermissao={temPermissao} />} tarefas={tarefas} setPagina={setPagina} />}
       {pagina === 'tarefas' && <PaginaMinhasTarefas tarefas={tarefas} recarregar={carregarDados} modo="onboarding" />}
       {pagina === 'tarefas-onboarding' && <PaginaMinhasTarefas tarefas={tarefas} recarregar={carregarDados} modo="onboarding" />}
       {pagina === 'tarefas-minhas' && <PaginaMinhasTarefas tarefas={tarefas} recarregar={carregarDados} modo="minhas" />}

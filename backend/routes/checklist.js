@@ -53,7 +53,7 @@ router.post('/', autenticar, async (req, res) => {
       criadoPor: req.usuario._id,
     });
     const populada = await populate(AtividadeChecklist.findById(atividade._id));
-    registrarLog({ empresa: req.usuario.empresa._id, usuario: req.usuario._id, tipo: 'atividade_criada', descricao: 'Criou a atividade ' + descricao });
+    registrarLog({ empresa: req.usuario.empresa._id, usuario: req.usuario._id, tipo: 'atividade_criada', categoria: 'atividade', descricao: 'Criou a atividade ' + descricao });
     res.status(201).json(populada);
   } catch (err) {
     res.status(500).json({ erro: 'Erro ao criar atividade.' });
@@ -89,7 +89,7 @@ router.delete('/:id', autenticar, async (req, res) => {
       { _id: req.params.id, empresa: req.usuario.empresa._id },
       { ativo: false }
     );
-    registrarLog({ empresa: req.usuario.empresa._id, usuario: req.usuario._id, tipo: 'atividade_excluida', descricao: 'Removeu uma atividade do banco' });
+    registrarLog({ empresa: req.usuario.empresa._id, usuario: req.usuario._id, tipo: 'atividade_excluida', categoria: 'atividade', descricao: 'Removeu uma atividade do banco' });
     res.json({ mensagem: 'Atividade removida.' });
   } catch (err) {
     res.status(500).json({ erro: 'Erro ao remover atividade.' });

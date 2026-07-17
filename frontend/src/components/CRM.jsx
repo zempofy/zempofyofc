@@ -13,12 +13,12 @@ const ETAPAS = [
 ]
 
 const LEADS_MOCK = [
-  { id: 1, nome: 'Marcos Oliveira', empresa: 'Construções MO LTDA', telefone: '(31) 99999-1234', email: 'marcos@mo.com', etapa: 'prospeccao', valor: 'R$ 800,00/mês', origem: 'Indicação', criadoEm: '10/06/2026', criadoPor: 'Ana Lima', obs: 'Empresa de pequeno porte, Simples Nacional' },
-  { id: 2, nome: 'Ana Paula Silva', empresa: 'Salão Bella Donna', telefone: '(31) 98888-5678', email: 'ana@bella.com', etapa: 'contato', valor: 'R$ 500,00/mês', origem: 'Instagram', criadoEm: '08/06/2026', criadoPor: 'Carlos Souza', obs: 'MEI, quer abrir ME em breve' },
-  { id: 3, nome: 'Ricardo Ferreira', empresa: 'RF Transportes', telefone: '(31) 97777-9012', email: 'rf@transp.com', etapa: 'reuniao', valor: 'R$ 1.200,00/mês', origem: 'Site', criadoEm: '05/06/2026', criadoPor: 'Ana Lima', obs: 'Reunião marcada para semana que vem' },
-  { id: 4, nome: 'Juliana Costa', empresa: 'JC Moda e Acessórios', telefone: '(31) 96666-3456', email: 'ju@jcmoda.com', etapa: 'proposta', valor: 'R$ 700,00/mês', origem: 'Indicação', criadoEm: '01/06/2026', criadoPor: 'Carlos Souza', obs: 'Proposta enviada, aguardando retorno' },
-  { id: 5, nome: 'Carlos Mendes', empresa: 'Padaria Pão Nosso', telefone: '(31) 95555-7890', email: 'carlos@paon.com', etapa: 'fechado', valor: 'R$ 600,00/mês', origem: 'Indicação', criadoEm: '28/05/2026', criadoPor: 'Ana Lima', obs: 'Fechado! Iniciar onboarding' },
-  { id: 6, nome: 'Fernanda Lima', empresa: 'Studio Fit Academia', telefone: '(31) 94444-2345', email: 'fe@studiofit.com', etapa: 'perdido', valor: 'R$ 900,00/mês', origem: 'Instagram', criadoEm: '20/05/2026', criadoPor: 'Carlos Souza', obs: 'Optou por outro escritório' },
+  { id: 1, nome: 'Marcos Oliveira', empresa: 'Construções MO LTDA', telefone: '(31) 99999-1234', email: 'marcos@mo.com', etapa: 'prospeccao', valor: 'R$ 800,00/mês', origem: 'Indicação', criadoEm: '10/06/2026', criadoPor: 'Ana Lima', tipoServico: 'Cliente novo', obs: 'Empresa de pequeno porte, Simples Nacional' },
+  { id: 2, nome: 'Ana Paula Silva', empresa: 'Salão Bella Donna', telefone: '(31) 98888-5678', email: 'ana@bella.com', etapa: 'contato', valor: 'R$ 500,00/mês', origem: 'Instagram', criadoEm: '08/06/2026', criadoPor: 'Carlos Souza', tipoServico: 'Abertura de empresa', obs: 'MEI, quer abrir ME em breve' },
+  { id: 3, nome: 'Ricardo Ferreira', empresa: 'RF Transportes', telefone: '(31) 97777-9012', email: 'rf@transp.com', etapa: 'reuniao', valor: 'R$ 1.200,00/mês', origem: 'Site', criadoEm: '05/06/2026', criadoPor: 'Ana Lima', tipoServico: 'Reforma tributária', obs: 'Reunião marcada para semana que vem' },
+  { id: 4, nome: 'Juliana Costa', empresa: 'JC Moda e Acessórios', telefone: '(31) 96666-3456', email: 'ju@jcmoda.com', etapa: 'proposta', valor: 'R$ 700,00/mês', origem: 'Indicação', criadoEm: '01/06/2026', criadoPor: 'Carlos Souza', tipoServico: 'Cliente novo', obs: 'Proposta enviada, aguardando retorno' },
+  { id: 5, nome: 'Carlos Mendes', empresa: 'Padaria Pão Nosso', telefone: '(31) 95555-7890', email: 'carlos@paon.com', etapa: 'fechado', valor: 'R$ 600,00/mês', origem: 'Indicação', criadoEm: '28/05/2026', criadoPor: 'Ana Lima', tipoServico: 'Cliente novo', obs: 'Fechado! Iniciar onboarding' },
+  { id: 6, nome: 'Fernanda Lima', empresa: 'Studio Fit Academia', telefone: '(31) 94444-2345', email: 'fe@studiofit.com', etapa: 'perdido', valor: 'R$ 900,00/mês', origem: 'Instagram', criadoEm: '20/05/2026', criadoPor: 'Carlos Souza', tipoServico: 'Serviço avulso', obs: 'Optou por outro escritório' },
 ]
 
 function CardLead({ lead, onClick, onDragStart, onDragEnd, isTitular, mobile }) {
@@ -94,6 +94,7 @@ function DetalheDrawer({ lead, fechar, onMoverEtapa, isTitular }) {
               { icone: <Icone.Mail size={14}/>, label:'E-mail', valor: lead.email },
               { icone: <Icone.Zap size={14}/>, label:'Origem', valor: lead.origem },
               { icone: <Icone.Clock size={14}/>, label:'Adicionado em', valor: lead.criadoEm },
+              { icone: <Icone.FileText size={14}/>, label:'Tipo de serviço', valor: lead.tipoServico || '—' },
               ...(isTitular ? [{ icone: <Icone.Users size={14}/>, label:'Criado por', valor: lead.criadoPor }] : []),
             ].map((item,i) => (
               <div key={i} style={{ display:'flex', alignItems:'center', gap:'10px' }}>

@@ -9,7 +9,7 @@ const logSchema = new mongoose.Schema({
       'implantacao_criada', 'implantacao_excluida', 'implantacao_etapa_concluida',
       'modelo_criado', 'modelo_editado', 'modelo_excluido',
       'atividade_criada', 'atividade_editada', 'atividade_excluida',
-      'cliente_criado', 'cliente_editado', 'cliente_excluido',
+      'cliente_criado', 'cliente_editado', 'cliente_excluido', 'clientes_importados',
       'membro_adicionado', 'membro_removido',
       'tarefa_concluida',
     ],

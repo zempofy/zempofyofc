@@ -32,4 +32,14 @@ router.put('/', autenticar, apenasAdmin, async (req, res) => {
   }
 });
 
+// PUT /api/empresa/configuracoes
+router.put('/configuracoes', autenticar, apenasAdmin, async (req, res) => {
+  try {
+    const { alertaOnboardingDias } = req.body;
+    const Empresa = require('../models/Empresa');
+    await Empresa.findByIdAndUpdate(req.usuario.empresa._id, { alertaOnboardingDias });
+    res.json({ ok: true });
+  } catch { res.status(500).json({ erro: 'Erro ao salvar configuração.' }); }
+});
+
 module.exports = router;
