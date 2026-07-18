@@ -593,7 +593,7 @@ export default function DashboardFuncionario() {
 
   return (
     <Layout menuItens={menuItens} paginaAtual={pagina} setPagina={setPagina}>
-      {pagina === 'inicio' && <PaginaInicio usuario={usuario} setPagina={setPagina} isTitular={false} temPermissao={temPermissao} />} tarefas={tarefas} setPagina={setPagina} />}
+      {pagina === 'inicio' && <PaginaInicio usuario={usuario} setPagina={setPagina} isTitular={false} temPermissao={temPermissao} />}
       {pagina === 'tarefas' && <PaginaMinhasTarefas tarefas={tarefas} recarregar={carregarDados} modo="onboarding" />}
       {pagina === 'tarefas-onboarding' && <PaginaMinhasTarefas tarefas={tarefas} recarregar={carregarDados} modo="onboarding" />}
       {pagina === 'tarefas-minhas' && <PaginaMinhasTarefas tarefas={tarefas} recarregar={carregarDados} modo="minhas" />}

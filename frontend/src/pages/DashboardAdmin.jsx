@@ -239,6 +239,22 @@ function CheckItem({ ativo, label, desc, onClick, sub = false }) {
   )
 }
 
+const PERMISSOES_LABELS = [
+  { key: 'gerenciarEquipe', label: 'Gerenciar equipe', desc: 'Acesso à gestão de membros e setores', subpermissoes: [
+    { key: 'gerenciarMembros', label: 'Convidar e remover membros', desc: 'Adicionar e remover colaboradores' },
+    { key: 'gerenciarSetores', label: 'Gerenciar setores', desc: 'Criar e editar setores' },
+  ]},
+  { key: 'gerenciarOnboarding', label: 'Gerenciar onboarding', desc: 'Acesso aos onboardings e modelos', subpermissoes: [
+    { key: 'criarImplantacoes', label: 'Criar implantações', desc: 'Iniciar onboarding de novos clientes' },
+    { key: 'gerenciarModelos', label: 'Gerenciar modelos', desc: 'Criar e editar modelos de onboarding' },
+    { key: 'gerenciarBancoAtividades', label: 'Banco de atividades', desc: 'Gerenciar atividades do checklist' },
+  ]},
+  { key: 'gerenciarClientes', label: 'Gerenciar clientes', desc: 'Ver e editar a carteira de clientes' },
+  { key: 'verRelatorios', label: 'Ver relatórios', desc: 'Acessar métricas e relatórios da equipe' },
+  { key: 'publicarMural', label: 'Publicar no mural', desc: 'Postar avisos para a equipe' },
+  { key: 'criarTarefas', label: 'Criar tarefas para outros', desc: 'Atribuir tarefas a outros colaboradores' },
+]
+
 function PainelPermissoes({ permissoes, onChange }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '4px' }}>
