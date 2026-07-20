@@ -185,4 +185,90 @@ const enviarAlertaOnboardingParado = async ({ destinatario, nomeCliente, diasPar
   }
 };
 
-module.exports = { enviarOnboardingCriado, enviarEtapaDesbloqueada, enviarTarefaAtribuida, enviarVerificacaoEmail, enviarBoasVindas, enviarAlertaOnboardingParado };
+const enviarRedefinicaoSenha = async ({ destinatario, nome, token }) => {
+  const link = `https://app.zempofy.com.br/redefinir-senha?token=${token}`;
+  const corpo = `
+    <p>Olá, <strong>${nome}</strong>!</p>
+    <p>Recebemos uma solicitação para redefinir a senha da sua conta no Zempofy.</p>
+    <p>Clique no botão abaixo para criar uma nova senha. Este link é válido por <strong>1 hora</strong>.</p>
+    <a class="btn" href="${link}">Redefinir minha senha</a>
+    <p style="margin-top:16px;font-size:0.8rem;color:#71717a">Se você não solicitou a redefinição, ignore este e-mail. Sua senha permanece a mesma.</p>
+  `;
+  try {
+    await resend.emails.send({
+      from: FROM,
+      to: destinatario,
+      subject: 'Redefinição de senha — Zempofy',
+      html: template('Redefinição de senha', corpo),
+    });
+  } catch (err) {
+    console.error('Erro ao enviar e-mail redefinição:', err);
+  }
+};
+
+// 8. Resumo periódico pro titular
+const enviarResumo = async ({ destinatario, nome, empresa, dados, frequencia }) => {
+  const freq = { semanal: 'semanal', quinzenal: 'quinzenal', mensal: 'mensal' }[frequencia] || 'semanal'
+  const corpo = `
+    <p>Olá, <strong>${nome}</strong>! Aqui está o resumo ${freq} do <strong>${empresa}</strong>.</p>
+
+    <div class="card">
+      <p style="font-size:0.8rem;font-weight:700;color:#71717a;text-transform:uppercase;letter-spacing:1px;margin:0 0 12px">Onboardings</p>
+      <div style="display:flex;gap:20px;flex-wrap:wrap">
+        <div><p style="font-size:1.6rem;font-weight:700;color:#00b141;margin:0">${dados.onboardingsAtivos}</p><p style="font-size:0.78rem;color:#71717a;margin:4px 0 0">em andamento</p></div>
+        <div><p style="font-size:1.6rem;font-weight:700;color:#a1a1aa;margin:0">${dados.onboardingsConcluidos}</p><p style="font-size:0.78rem;color:#71717a;margin:4px 0 0">concluídos no período</p></div>
+      </div>
+    </div>
+
+    <div class="card" style="margin-top:12px">
+      <p style="font-size:0.8rem;font-weight:700;color:#71717a;text-transform:uppercase;letter-spacing:1px;margin:0 0 12px">Tarefas</p>
+      <div style="display:flex;gap:20px;flex-wrap:wrap">
+        <div><p style="font-size:1.6rem;font-weight:700;color:#f59e0b;margin:0">${dados.tarefasPendentes}</p><p style="font-size:0.78rem;color:#71717a;margin:4px 0 0">pendentes</p></div>
+        <div><p style="font-size:1.6rem;font-weight:700;color:#00b141;margin:0">${dados.tarefasConcluidas}</p><p style="font-size:0.78rem;color:#71717a;margin:4px 0 0">concluídas no período</p></div>
+      </div>
+    </div>
+
+    <div class="card" style="margin-top:12px">
+      <p style="font-size:0.8rem;font-weight:700;color:#71717a;text-transform:uppercase;letter-spacing:1px;margin:0 0 12px">Clientes</p>
+      <div style="display:flex;gap:20px;flex-wrap:wrap">
+        <div><p style="font-size:1.6rem;font-weight:700;color:#818cf8;margin:0">${dados.clientesNovos}</p><p style="font-size:0.78rem;color:#71717a;margin:4px 0 0">novos no período</p></div>
+        <div><p style="font-size:1.6rem;font-weight:700;color:#a1a1aa;margin:0">${dados.clientesTotal}</p><p style="font-size:0.78rem;color:#71717a;margin:4px 0 0">total na carteira</p></div>
+      </div>
+    </div>
+
+    <a class="btn" href="https://app.zempofy.com.br" style="margin-top:20px;display:inline-block">Ver sistema completo</a>
+  `;
+  try {
+    await resend.emails.send({
+      from: FROM,
+      to: destinatario,
+      subject: `Resumo ${freq} — ${empresa}`,
+      html: template(`Resumo ${freq}`, corpo),
+    });
+  } catch (err) { console.error('Erro resumo:', err); }
+};
+
+// 9. Lembrete de tarefa com prazo próximo
+const enviarLembreteTarefa = async ({ destinatario, nome, titulo, prazo, criadoPor, diasRestantes }) => {
+  const urgencia = diasRestantes === 0 ? 'vence hoje' : diasRestantes === 1 ? 'vence amanhã' : `vence em ${diasRestantes} dias`
+  const corUrgencia = diasRestantes === 0 ? '#f87171' : diasRestantes === 1 ? '#f59e0b' : '#818cf8'
+  const corpo = `
+    <p>Olá, <strong>${nome}</strong>! Uma tarefa sob sua responsabilidade <strong>${urgencia}</strong>.</p>
+    <div class="card">
+      <p style="font-size:1rem;font-weight:700;color:#fff;margin:0 0 8px">${titulo}</p>
+      <p style="font-size:0.82rem;color:#71717a;margin:0">Prazo: <span style="color:${corUrgencia};font-weight:600">${new Date(prazo).toLocaleDateString('pt-BR')}</span></p>
+      ${criadoPor ? `<p style="font-size:0.78rem;color:#71717a;margin:6px 0 0">Atribuída por: ${criadoPor}</p>` : ''}
+    </div>
+    <a class="btn" href="https://app.zempofy.com.br">Ver tarefa</a>
+  `;
+  try {
+    await resend.emails.send({
+      from: FROM,
+      to: destinatario,
+      subject: `⏰ Tarefa ${urgencia}: ${titulo}`,
+      html: template('Lembrete de tarefa', corpo),
+    });
+  } catch (err) { console.error('Erro lembrete tarefa:', err); }
+};
+
+module.exports = { enviarOnboardingCriado, enviarEtapaDesbloqueada, enviarTarefaAtribuida, enviarVerificacaoEmail, enviarBoasVindas, enviarAlertaOnboardingParado, enviarRedefinicaoSenha, enviarResumo, enviarLembreteTarefa };

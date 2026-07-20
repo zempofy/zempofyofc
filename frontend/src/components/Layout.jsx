@@ -46,12 +46,12 @@ function ModalAcessoSenha({ usuario, fechar, onNomeAtualizado }) {
   }
 
   const salvarSenha = async () => {
-    if (!form.senhaAtual || !form.novaSenha) return setErro('Preencha todos os campos.')
+    if (!form.novaSenha) return setErro('Digite a nova senha.')
     if (form.novaSenha !== form.confirmar) return setErro('As senhas não coincidem.')
     if (form.novaSenha.length < 6) return setErro('Mínimo 6 caracteres.')
     setCarregando(true); setErro('')
     try {
-      await api.put('/usuarios/minha-senha', { senhaAtual: form.senhaAtual, novaSenha: form.novaSenha })
+      await api.put('/usuarios/minha-senha', { novaSenha: form.novaSenha })
       setSucesso('Senha atualizada!'); setAba(null)
     } catch (err) {
       setErro(err.response?.data?.erro || 'Erro ao atualizar senha.')
@@ -130,37 +130,48 @@ function ModalAcessoSenha({ usuario, fechar, onNomeAtualizado }) {
           </div>
         )}
 
+        {/* Senha — campo cinza que expande ao clicar */}
         <div style={stylesModal.campo}>
           <label style={stylesModal.label}>Senha</label>
-          <div style={stylesModal.valorComAcao}>
-            <span style={{ letterSpacing: '3px', color: 'var(--texto-apagado)' }}>••••••••</span>
-            <button style={stylesModal.btnAlterar} onClick={() => trocarAba(aba === 'senha' ? null : 'senha')}>
-              {aba === 'senha' ? 'Cancelar' : 'Alterar'}
+          {aba !== 'senha' ? (
+            <button
+              onClick={() => trocarAba('senha')}
+              style={{
+                width: '100%', padding: '10px 14px', background: 'var(--input)',
+                border: '1px solid var(--borda)', borderRadius: '10px',
+                color: 'var(--texto-apagado)', fontSize: '0.85rem', fontFamily: 'Inter,sans-serif',
+                cursor: 'pointer', textAlign: 'left', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+              }}
+            >
+              <span style={{ letterSpacing: '3px' }}>••••••••</span>
+              <span style={{ fontSize: '0.78rem', color: 'var(--texto-apagado)' }}>Alterar senha</span>
             </button>
-          </div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              {erro && <p style={stylesModal.erro}>{erro}</p>}
+              {sucesso && <p style={stylesModal.sucesso}>{sucesso}</p>}
+              <input id="input-nova-senha" style={stylesModal.input} type="password" placeholder="Nova senha"
+                value={form.novaSenha} autoFocus
+                onChange={e => setForm({ ...form, novaSenha: e.target.value })}
+                onKeyDown={e => e.key === 'Enter' && document.getElementById('input-confirmar-senha')?.focus()}
+              />
+              <input id="input-confirmar-senha" style={stylesModal.input} type="password" placeholder="Confirmar nova senha"
+                value={form.confirmar}
+                onChange={e => setForm({ ...form, confirmar: e.target.value })}
+                onKeyDown={e => e.key === 'Enter' && salvarSenha()}
+              />
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <button style={{ ...stylesModal.btnSalvar, flex: 1 }} onClick={salvarSenha} disabled={carregando}>
+                  {carregando ? 'Salvando...' : 'Salvar senha'}
+                </button>
+                <button style={{ background: 'none', border: '1px solid var(--borda)', borderRadius: '8px', color: 'var(--texto-apagado)', padding: '8px 14px', cursor: 'pointer', fontSize: '0.82rem', fontFamily: 'Inter,sans-serif' }}
+                  onClick={() => trocarAba(null)}>
+                  Cancelar
+                </button>
+              </div>
+            </div>
+          )}
         </div>
-
-        {aba === 'senha' && (
-          <div style={stylesModal.subForm}>
-            {erro && <p style={stylesModal.erro}>{erro}</p>}
-            {sucesso && <p style={stylesModal.sucesso}>{sucesso}</p>}
-            <div style={stylesModal.campo}>
-              <label style={stylesModal.label}>Senha atual</label>
-              <input style={stylesModal.input} type="password" placeholder="••••••••" value={form.senhaAtual} onChange={e => setForm({ ...form, senhaAtual: e.target.value })} />
-            </div>
-            <div style={stylesModal.campo}>
-              <label style={stylesModal.label}>Nova senha</label>
-              <input style={stylesModal.input} type="password" placeholder="••••••••" value={form.novaSenha} onChange={e => setForm({ ...form, novaSenha: e.target.value })} />
-            </div>
-            <div style={stylesModal.campo}>
-              <label style={stylesModal.label}>Confirmar nova senha</label>
-              <input style={stylesModal.input} type="password" placeholder="••••••••" value={form.confirmar} onChange={e => setForm({ ...form, confirmar: e.target.value })} />
-            </div>
-            <button style={stylesModal.btnSalvar} onClick={salvarSenha} disabled={carregando}>
-              {carregando ? 'Salvando...' : 'Salvar senha'}
-            </button>
-          </div>
-        )}
 
         {sucesso && aba === null && <p style={stylesModal.sucesso}>{sucesso}</p>}
       </div>

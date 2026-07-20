@@ -1,0 +1,81 @@
+import { useState, useEffect } from 'react'
+import { useSearchParams, useNavigate } from 'react-router-dom'
+import api from '../services/api'
+
+export default function RedefinirSenha() {
+  const [params] = useSearchParams()
+  const navigate = useNavigate()
+  const token = params.get('token')
+
+  const [form, setForm] = useState({ novaSenha: '', confirmar: '' })
+  const [erro, setErro] = useState('')
+  const [sucesso, setSucesso] = useState(false)
+  const [carregando, setCarregando] = useState(false)
+
+  useEffect(() => {
+    if (!token) navigate('/login')
+  }, [token])
+
+  const salvar = async () => {
+    if (!form.novaSenha) return setErro('Digite a nova senha.')
+    if (form.novaSenha.length < 6) return setErro('Mínimo 6 caracteres.')
+    if (form.novaSenha !== form.confirmar) return setErro('As senhas não coincidem.')
+    setCarregando(true); setErro('')
+    try {
+      await api.post('/auth/redefinir-senha', { token, novaSenha: form.novaSenha })
+      setSucesso(true)
+    } catch (e) {
+      setErro(e.response?.data?.erro || 'Link inválido ou expirado.')
+    } finally { setCarregando(false) }
+  }
+
+  const s = {
+    wrap: { minHeight: '100vh', background: '#09090b', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' },
+    card: { background: '#18181b', border: '1px solid #27272a', borderRadius: '16px', padding: '32px', width: '100%', maxWidth: '380px' },
+    logo: { fontSize: '1.4rem', fontWeight: '800', color: '#00b141', letterSpacing: '-0.03em', marginBottom: '24px', fontFamily: 'Inter,sans-serif', textAlign: 'center' },
+    titulo: { fontSize: '1.1rem', fontWeight: '700', color: '#fff', margin: '0 0 8px', fontFamily: 'Inter,sans-serif' },
+    sub: { fontSize: '0.82rem', color: 'rgba(255,255,255,0.5)', margin: '0 0 24px', fontFamily: 'Inter,sans-serif', lineHeight: '1.5' },
+    label: { fontSize: '0.7rem', fontWeight: '600', color: 'rgba(255,255,255,0.5)', textTransform: 'uppercase', letterSpacing: '0.8px', display: 'block', marginBottom: '6px', fontFamily: 'Inter,sans-serif' },
+    inp: { width: '100%', padding: '10px 14px', background: '#1c1c1f', border: '1px solid #27272a', borderRadius: '8px', color: '#fff', fontSize: '0.875rem', fontFamily: 'Inter,sans-serif', boxSizing: 'border-box', marginBottom: '14px' },
+    btn: { width: '100%', background: 'linear-gradient(135deg,#00b141,#008f34)', color: '#fff', border: 'none', borderRadius: '8px', padding: '11px', fontFamily: 'Inter,sans-serif', fontWeight: '600', fontSize: '0.9rem', cursor: 'pointer', marginTop: '4px' },
+    erro: { color: '#f87171', fontSize: '0.8rem', background: 'rgba(248,113,113,0.08)', padding: '8px 12px', borderRadius: '8px', marginBottom: '14px', fontFamily: 'Inter,sans-serif' },
+  }
+
+  return (
+    <div style={s.wrap}>
+      <div style={s.card}>
+        <p style={s.logo}>Zempofy</p>
+        {sucesso ? (
+          <div style={{ textAlign: 'center' }}>
+            <p style={{ fontSize: '2rem', marginBottom: '12px' }}>✅</p>
+            <p style={s.titulo}>Senha redefinida!</p>
+            <p style={s.sub}>Sua senha foi atualizada com sucesso. Agora você pode fazer login com a nova senha.</p>
+            <button style={s.btn} onClick={() => navigate('/login')}>Ir para o login</button>
+          </div>
+        ) : (
+          <>
+            <p style={s.titulo}>Redefinir senha</p>
+            <p style={s.sub}>Digite sua nova senha abaixo.</p>
+            {erro && <p style={s.erro}>{erro}</p>}
+            <label style={s.label}>Nova senha</label>
+            <input style={s.inp} type="password" placeholder="••••••••" autoFocus
+              value={form.novaSenha} onChange={e => setForm({ ...form, novaSenha: e.target.value })}
+              onKeyDown={e => e.key === 'Enter' && document.getElementById('confirmar-red')?.focus()}
+            />
+            <label style={s.label}>Confirmar nova senha</label>
+            <input id="confirmar-red" style={s.inp} type="password" placeholder="••••••••"
+              value={form.confirmar} onChange={e => setForm({ ...form, confirmar: e.target.value })}
+              onKeyDown={e => e.key === 'Enter' && salvar()}
+            />
+            <button style={s.btn} onClick={salvar} disabled={carregando}>
+              {carregando ? 'Salvando...' : 'Salvar nova senha'}
+            </button>
+            <button onClick={() => navigate('/login')} style={{ width:'100%', background:'none', border:'none', color:'rgba(255,255,255,0.4)', fontSize:'0.8rem', cursor:'pointer', marginTop:'12px', fontFamily:'Inter,sans-serif' }}>
+              ← Voltar para o login
+            </button>
+          </>
+        )}
+      </div>
+    </div>
+  )
+}

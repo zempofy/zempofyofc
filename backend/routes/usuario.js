@@ -39,11 +39,10 @@ router.put('/minha-foto', autenticar, async (req, res) => {
 
 // PUT /api/usuarios/minha-senha
 router.put('/minha-senha', autenticar, async (req, res) => {
-  const { senhaAtual, novaSenha } = req.body;
+  const { novaSenha } = req.body;
   try {
+    if (!novaSenha || novaSenha.length < 6) return res.status(400).json({ erro: 'Senha deve ter ao menos 6 caracteres.' });
     const usuario = await Usuario.findById(req.usuario._id);
-    const senhaCorreta = await usuario.verificarSenha(senhaAtual);
-    if (!senhaCorreta) return res.status(400).json({ erro: 'Senha atual incorreta.' });
     usuario.senha = novaSenha;
     await usuario.save();
     res.json({ mensagem: 'Senha atualizada com sucesso.' });

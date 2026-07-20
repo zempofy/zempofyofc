@@ -135,6 +135,56 @@ router.get('/me', autenticar, (req, res) => {
   });
 });
 
+// POST /api/auth/esqueci-senha
+router.post('/esqueci-senha', async (req, res) => {
+  try {
+    const { email } = req.body;
+    if (!email) return res.status(400).json({ erro: 'E-mail obrigatório.' });
+    const usuario = await Usuario.findOne({ email: email.toLowerCase() });
+    // Sempre retorna sucesso pra não revelar se e-mail existe
+    if (!usuario) return res.json({ mensagem: 'Se o e-mail estiver cadastrado, você receberá as instruções.' });
+
+    const token = require('crypto').randomBytes(32).toString('hex');
+    const expira = new Date(Date.now() + 3600000); // 1 hora
+
+    usuario.tokenResetSenha = token;
+    usuario.tokenResetExpira = expira;
+    await usuario.save();
+
+    const { enviarRedefinicaoSenha } = require('../services/email');
+    await enviarRedefinicaoSenha({ destinatario: email, nome: usuario.nome, token });
+
+    res.json({ mensagem: 'Se o e-mail estiver cadastrado, você receberá as instruções.' });
+  } catch (err) {
+    console.error('Esqueci senha:', err.message);
+    res.status(500).json({ erro: 'Erro ao processar solicitação.' });
+  }
+});
+
+// POST /api/auth/redefinir-senha
+router.post('/redefinir-senha', async (req, res) => {
+  try {
+    const { token, novaSenha } = req.body;
+    if (!token || !novaSenha) return res.status(400).json({ erro: 'Dados inválidos.' });
+    if (novaSenha.length < 6) return res.status(400).json({ erro: 'Senha deve ter ao menos 6 caracteres.' });
+
+    const usuario = await Usuario.findOne({
+      tokenResetSenha: token,
+      tokenResetExpira: { $gt: new Date() }
+    });
+    if (!usuario) return res.status(400).json({ erro: 'Link inválido ou expirado.' });
+
+    usuario.senha = novaSenha;
+    usuario.tokenResetSenha = undefined;
+    usuario.tokenResetExpira = undefined;
+    await usuario.save();
+
+    res.json({ mensagem: 'Senha redefinida com sucesso!' });
+  } catch (err) {
+    res.status(500).json({ erro: 'Erro ao redefinir senha.' });
+  }
+});
+
 module.exports = router;
 
 // GET /api/auth/verificar-email?token=xxx

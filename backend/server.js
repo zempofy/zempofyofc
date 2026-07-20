@@ -113,8 +113,104 @@ const verificarOnboardingsParados = async () => {
     }
   } catch(e) { console.error('Job onboarding parado:', e.message); }
 };
+// ── Job: lembrete de tarefas com prazo próximo ──
+const verificarTarefasComPrazo = async () => {
+  try {
+    const Tarefa = require('./models/Tarefa');
+    const Usuario = require('./models/Usuario');
+    const { enviarLembreteTarefa } = require('./services/email');
+    const hoje = new Date(); hoje.setHours(0,0,0,0);
+    const em3dias = new Date(hoje); em3dias.setDate(em3dias.getDate() + 3);
+
+    const tarefas = await Tarefa.find({
+      status: { $ne: 'concluida' },
+      prazo: { $gte: hoje, $lte: em3dias },
+      responsavel: { $exists: true }
+    }).populate('responsavel', 'nome email').populate('criadoPor', 'nome');
+
+    for (const t of tarefas) {
+      if (!t.responsavel?.email) continue;
+      const diasRestantes = Math.floor((new Date(t.prazo) - hoje) / 86400000);
+      await enviarLembreteTarefa({
+        destinatario: t.responsavel.email,
+        nome: t.responsavel.nome,
+        titulo: t.titulo || t.descricao,
+        prazo: t.prazo,
+        criadoPor: t.criadoPor?.nome,
+        diasRestantes,
+      });
+    }
+  } catch(e) { console.error('Job lembrete tarefa:', e.message); }
+};
+
+// ── Job: resumo periódico ──
+const enviarResumoPeriodico = async () => {
+  try {
+    const Empresa = require('./models/Empresa');
+    const Usuario = require('./models/Usuario');
+    const Implantacao = require('./models/Implantacao');
+    const Cliente = require('./models/Cliente');
+    const Tarefa = require('./models/Tarefa');
+    const { enviarResumo } = require('./services/email');
+
+    const empresas = await Empresa.find({ ativo: true, resumoFrequencia: { $exists: true, $ne: 'nunca' } });
+
+    for (const emp of empresas) {
+      const freq = emp.resumoFrequencia || 'semanal';
+      const agora = new Date();
+      const diaSemana = agora.getDay(); // 1 = segunda
+      const diaMes = agora.getDate();
+
+      // Verificar se hoje é o dia certo pra enviar
+      const deveEnviar =
+        (freq === 'semanal' && diaSemana === 1) ||
+        (freq === 'quinzenal' && diaSemana === 1 && diaMes <= 7) ||
+        (freq === 'mensal' && diaMes === 1);
+
+      if (!deveEnviar) continue;
+
+      const titular = await Usuario.findOne({ empresa: emp._id, cargo: 'admin' }).select('nome email');
+      if (!titular?.email) continue;
+
+      // Calcular período
+      const diasPeriodo = freq === 'mensal' ? 30 : freq === 'quinzenal' ? 14 : 7;
+      const inicioPeriodo = new Date(agora); inicioPeriodo.setDate(inicioPeriodo.getDate() - diasPeriodo);
+
+      const [impsAtivas, impsConcluidas, clientes, clientesNovos, tarefas] = await Promise.all([
+        Implantacao.countDocuments({ empresa: emp._id, status: { $ne: 'concluida' } }),
+        Implantacao.countDocuments({ empresa: emp._id, status: 'concluida', updatedAt: { $gte: inicioPeriodo } }),
+        Cliente.countDocuments({ empresa: emp._id }),
+        Cliente.countDocuments({ empresa: emp._id, criadoEm: { $gte: inicioPeriodo } }),
+        Tarefa.find({ empresa: emp._id }),
+      ]);
+
+      await enviarResumo({
+        destinatario: titular.email,
+        nome: titular.nome,
+        empresa: emp.nome,
+        frequencia: freq,
+        dados: {
+          onboardingsAtivos: impsAtivas,
+          onboardingsConcluidos: impsConcluidas,
+          tarefasPendentes: tarefas.filter(t => t.status !== 'concluida').length,
+          tarefasConcluidas: tarefas.filter(t => t.status === 'concluida' && new Date(t.updatedAt) >= inicioPeriodo).length,
+          clientesNovos,
+          clientesTotal: clientes,
+        }
+      });
+    }
+  } catch(e) { console.error('Job resumo:', e.message); }
+};
+
 // Rodar às 8h todos os dias
-setInterval(() => { if (new Date().getHours() === 8) verificarOnboardingsParados(); }, 3600000);
+setInterval(() => {
+  const hora = new Date().getHours();
+  if (hora === 8) {
+    verificarOnboardingsParados();
+    verificarTarefasComPrazo();
+    enviarResumoPeriodico();
+  }
+}, 3600000);
 
 // ── Rotas ──
 app.use('/api/auth', authRoutes);
