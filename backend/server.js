@@ -38,6 +38,7 @@ const ORIGENS_PERMITIDAS = [
   'https://zempofy.vercel.app',
   'https://zempofy-landing.vercel.app',
   'https://zempofy-painel.vercel.app',
+  'https://painel.zempofy.com.br',
   // desenvolvimento local
   'http://localhost:5173',
   'http://localhost:3000',
