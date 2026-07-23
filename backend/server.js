@@ -92,6 +92,7 @@ const verificarOnboardingsParados = async () => {
     const Implantacao = require('./models/Implantacao');
     const Usuario = require('./models/Usuario');
     const { enviarAlertaOnboardingParado } = require('./services/email');
+    const Implantacao = require('./models/Implantacao');
     const implantacoes = await Implantacao.find({ status: { $ne: 'concluida' } })
       .populate('empresa', 'nome alertaOnboardingDias');
     for (const imp of implantacoes) {
@@ -99,6 +100,11 @@ const verificarOnboardingsParados = async () => {
       const ultimaAtt = new Date(imp.updatedAt || imp.criadoEm);
       const diasParado = Math.floor((new Date() - ultimaAtt) / 86400000);
       if (diasParado >= diasPadrao) {
+        // Só envia se nunca enviou ou se já passou diasPadrao desde o último envio
+        const jaEnviou = imp.ultimoAlertaParado &&
+          Math.floor((new Date() - new Date(imp.ultimoAlertaParado)) / 86400000) < diasPadrao;
+        if (jaEnviou) continue;
+
         const titular = await Usuario.findOne({ empresa: imp.empresa._id, cargo: 'admin' }).select('email nome');
         if (!titular?.email) continue;
         const etapaAtual = imp.etapas?.find(e => e.status === 'em_andamento');
@@ -109,6 +115,8 @@ const verificarOnboardingsParados = async () => {
           etapaAtual: etapaAtual?.nome || 'Aguardando',
           empresa: imp.empresa?.nome || '',
         });
+        // Registrar envio
+        await Implantacao.findByIdAndUpdate(imp._id, { ultimoAlertaParado: new Date() });
       }
     }
   } catch(e) { console.error('Job onboarding parado:', e.message); }

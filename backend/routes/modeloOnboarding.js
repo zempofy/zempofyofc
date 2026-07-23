@@ -56,7 +56,9 @@ router.post('/', autenticar, apenasAdmin, async (req, res) => {
 });
 
 // PUT /api/modelos-onboarding/:id
-router.put('/:id', autenticar, apenasAdmin, async (req, res) => {
+router.put('/:id', autenticar, async (req, res) => {
+  const podeEditar = req.usuario.cargo === 'admin' || req.usuario.permissoes?.gerenciarModelos
+  if (!podeEditar) return res.status(403).json({ erro: 'Sem permissão para editar modelos.' });
   const { nome, descricao, setores } = req.body;
   try {
     const modelo = await populateModelo(

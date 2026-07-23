@@ -3,6 +3,7 @@ const mongoose = require('mongoose');
 // Cada tarefa dentro de uma etapa do processo real
 const tarefaEtapaSchema = new mongoose.Schema({
   tarefa: { type: mongoose.Schema.Types.ObjectId, ref: 'Tarefa', required: true },
+  ultimoAlertaParado: { type: Date },
   status: { type: String, enum: ['pendente', 'concluida'], default: 'pendente' },
   concluidaEm: { type: Date },
   concluidaPor: { type: mongoose.Schema.Types.ObjectId, ref: 'Usuario' }

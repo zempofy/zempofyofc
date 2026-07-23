@@ -141,13 +141,10 @@ function ModalAtividade({ setores, atividade, fechar, onSalvo, funcionarios, ref
   const { mostrar: toast } = useToast()
 
   const setorSelecionado = setores.find(s => s._id === setorId)
-  const idsDoSetor = setorSelecionado?.membros?.map(m => m._id || m) || []
+  const idsDoSetor = setorSelecionado?.membros?.map(m => m._id || m.toString()) || []
   const funcionariosDoSetor = funcionarios.filter(f => idsDoSetor.includes(f._id))
-  // Mostrar membros do setor + quem não está no setor (pode ser titular ou outro)
-  const outrosFuncionarios = funcionarios.filter(f => !idsDoSetor.includes(f._id))
-  const opcoesFuncionarios = funcionariosDoSetor.length > 0
-    ? [...funcionariosDoSetor, ...outrosFuncionarios]
-    : funcionarios
+  // Mostrar APENAS membros do setor selecionado
+  const opcoesFuncionarios = funcionariosDoSetor
 
   const salvar = async () => {
     if (!setorId) return setErro('Selecione um setor.')

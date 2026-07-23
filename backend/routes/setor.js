@@ -68,12 +68,26 @@ router.post('/', autenticar, apenasAdmin, async (req, res) => {
 router.put('/:id', autenticar, apenasAdmin, async (req, res) => {
   const { nome, cor, membros } = req.body;
   try {
+    const Usuario = require('../models/Usuario');
+    const setorAntigo = await Setor.findOne({ _id: req.params.id, empresa: req.usuario.empresa._id });
+    const membrosAntigos = setorAntigo?.membros?.map(m => m.toString()) || [];
+    const membrosNovos = (membros || []).map(m => m.toString());
+
     const setor = await Setor.findOneAndUpdate(
       { _id: req.params.id, empresa: req.usuario.empresa._id },
       { nome: nome?.trim(), cor, membros: membros || [] },
       { new: true }
     ).populate('membros', 'nome email avatar cargo');
     if (!setor) return res.status(404).json({ erro: 'Setor não encontrado.' });
+
+    // Sincronizar campo setores nos usuários
+    const adicionados = membrosNovos.filter(m => !membrosAntigos.includes(m));
+    const removidos = membrosAntigos.filter(m => !membrosNovos.includes(m));
+    await Promise.all([
+      ...adicionados.map(uid => Usuario.updateOne({ _id: uid }, { $addToSet: { setores: req.params.id } })),
+      ...removidos.map(uid => Usuario.updateOne({ _id: uid }, { $pull: { setores: req.params.id } })),
+    ]);
+
     res.json(setor);
   } catch (err) {
     res.status(500).json({ erro: 'Erro ao editar setor.' });
@@ -82,21 +96,37 @@ router.put('/:id', autenticar, apenasAdmin, async (req, res) => {
 
 // DELETE /api/setores/:id - Desativar setor (soft delete)
 
-// PATCH /api/setores/:id/membros — adiciona um membro ao setor
+// PATCH /api/setores/:id/membros — adiciona ou remove membro
 router.patch('/:id/membros', autenticar, async (req, res) => {
-  const { usuarioId } = req.body;
+  const { usuarioId, acao } = req.body; // acao: 'adicionar' | 'remover'
   if (!usuarioId) return res.status(400).json({ erro: 'usuarioId é obrigatório.' });
   try {
+    const op = acao === 'remover' ? { $pull: { membros: usuarioId } } : { $addToSet: { membros: usuarioId } }
     const setor = await Setor.findOneAndUpdate(
       { _id: req.params.id, empresa: req.usuario.empresa._id },
-      { $addToSet: { membros: usuarioId } },
+      op,
       { new: true }
     ).populate('membros', 'nome email avatar cargo');
     if (!setor) return res.status(404).json({ erro: 'Setor não encontrado.' });
+
+    // Sincronizar campo setores no Usuario
+    const Usuario = require('../models/Usuario');
+    if (acao === 'remover') {
+      await Usuario.updateOne({ _id: usuarioId }, { $pull: { setores: req.params.id } });
+    } else {
+      await Usuario.updateOne({ _id: usuarioId }, { $addToSet: { setores: req.params.id } });
+    }
+
     res.json(setor);
   } catch (err) {
-    res.status(500).json({ erro: 'Erro ao adicionar membro ao setor.' });
+    res.status(500).json({ erro: 'Erro ao atualizar membro do setor.' });
   }
+});
+
+// PATCH /api/setores/:id/membros/remover (compatibilidade)
+router.patch('/:id/membros/remover', autenticar, async (req, res) => {
+  req.body.acao = 'remover';
+  return router.handle(req, res);
 });
 
 router.delete('/:id', autenticar, apenasAdmin, async (req, res) => {
