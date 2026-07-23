@@ -6,9 +6,9 @@ const Implantacao = require('../models/Implantacao');
 
 // Middleware — verifica a chave secreta
 const verificarChave = (req, res, next) => {
-  const chave = req.headers['x-admin-key'];
+  const chave = req.headers['x-admin-key'] || req.query.key;
   if (!chave || chave !== process.env.ADMIN_SECRET_KEY) {
-    return res.status(401).json({ erro: 'Acesso negado.' });
+    return res.status(401).json({ erro: 'Acesso negado. Faça login.' });
   }
   next();
 };
