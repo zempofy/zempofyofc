@@ -92,7 +92,6 @@ const verificarOnboardingsParados = async () => {
     const Implantacao = require('./models/Implantacao');
     const Usuario = require('./models/Usuario');
     const { enviarAlertaOnboardingParado } = require('./services/email');
-    const Implantacao = require('./models/Implantacao');
     const implantacoes = await Implantacao.find({ status: { $ne: 'concluida' } })
       .populate('empresa', 'nome alertaOnboardingDias');
     for (const imp of implantacoes) {
