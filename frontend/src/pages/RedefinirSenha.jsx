@@ -1,6 +1,21 @@
-import { useState, useEffect } from 'react'
+import React, { useState, useEffect } from 'react'
+
 import { useSearchParams, useNavigate } from 'react-router-dom'
 import api from '../services/api'
+
+function InputSenhaVer({ style, placeholder, value, onChange, onKeyDown, id, autoFocus }) {
+  const [ver, setVer] = React.useState(false)
+  return (
+    <div style={{ position:'relative' }}>
+      <input id={id} style={{ ...style, paddingRight:'40px' }} type={ver?'text':'password'} placeholder={placeholder}
+        value={value} onChange={onChange} onKeyDown={onKeyDown} autoFocus={autoFocus} />
+      <button type="button" onClick={()=>setVer(v=>!v)} style={{ position:'absolute', right:'10px', top:'50%', transform:'translateY(-50%)', background:'none', border:'none', cursor:'pointer', color:'rgba(255,255,255,0.4)', display:'flex', alignItems:'center' }}>
+        {ver ? <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/><path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+        : <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>}
+      </button>
+    </div>
+  )
+}
 
 export default function RedefinirSenha() {
   const [params] = useSearchParams()
@@ -58,12 +73,12 @@ export default function RedefinirSenha() {
             <p style={s.sub}>Digite sua nova senha abaixo.</p>
             {erro && <p style={s.erro}>{erro}</p>}
             <label style={s.label}>Nova senha</label>
-            <input style={s.inp} type="password" placeholder="••••••••" autoFocus
+            <InputSenhaVer style={s.inp} placeholder="••••••••" autoFocus
               value={form.novaSenha} onChange={e => setForm({ ...form, novaSenha: e.target.value })}
               onKeyDown={e => e.key === 'Enter' && document.getElementById('confirmar-red')?.focus()}
             />
             <label style={s.label}>Confirmar nova senha</label>
-            <input id="confirmar-red" style={s.inp} type="password" placeholder="••••••••"
+            <InputSenhaVer id="confirmar-red" style={s.inp} placeholder="••••••••"
               value={form.confirmar} onChange={e => setForm({ ...form, confirmar: e.target.value })}
               onKeyDown={e => e.key === 'Enter' && salvar()}
             />

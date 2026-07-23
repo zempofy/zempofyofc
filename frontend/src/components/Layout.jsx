@@ -9,6 +9,25 @@ import Modal from './Modal'
 import WidgetFeedback from './WidgetFeedback'
 import { useToast } from './Toast'
 
+function InputSenha({ id, value, onChange, onKeyDown, placeholder, autoFocus }) {
+  const [ver, setVer] = React.useState(false)
+  return (
+    <div style={{ position: 'relative' }}>
+      <input id={id} style={{ background:'var(--input)', border:'1px solid var(--borda)', borderRadius:'10px', padding:'10px 40px 10px 14px', color:'var(--texto)', fontSize:'0.875rem', fontFamily:'Inter,sans-serif', width:'100%', boxSizing:'border-box' }}
+        type={ver ? 'text' : 'password'} placeholder={placeholder} value={value}
+        onChange={onChange} onKeyDown={onKeyDown} autoFocus={autoFocus}
+      />
+      <button type="button" onClick={()=>setVer(v=>!v)} style={{ position:'absolute', right:'10px', top:'50%', transform:'translateY(-50%)', background:'none', border:'none', cursor:'pointer', color:'var(--texto-apagado)', display:'flex', alignItems:'center', padding:'2px' }}>
+        {ver ? (
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/><path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+        ) : (
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+        )}
+      </button>
+    </div>
+  )
+}
+
 function ModalAcessoSenha({ usuario, fechar, onNomeAtualizado }) {
   const [aba, setAba] = useState(null)
   const [form, setForm] = useState({ novoNome: '', novoEmail: '', senhaAtual: '', novaSenha: '', confirmar: '' })
@@ -150,12 +169,12 @@ function ModalAcessoSenha({ usuario, fechar, onNomeAtualizado }) {
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
               {erro && <p style={stylesModal.erro}>{erro}</p>}
               {sucesso && <p style={stylesModal.sucesso}>{sucesso}</p>}
-              <input id="input-nova-senha" style={stylesModal.input} type="password" placeholder="Nova senha"
+              <InputSenha id="input-nova-senha" placeholder="Nova senha"
                 value={form.novaSenha} autoFocus
                 onChange={e => setForm({ ...form, novaSenha: e.target.value })}
                 onKeyDown={e => e.key === 'Enter' && document.getElementById('input-confirmar-senha')?.focus()}
               />
-              <input id="input-confirmar-senha" style={stylesModal.input} type="password" placeholder="Confirmar nova senha"
+              <InputSenha id="input-confirmar-senha" placeholder="Confirmar nova senha"
                 value={form.confirmar}
                 onChange={e => setForm({ ...form, confirmar: e.target.value })}
                 onKeyDown={e => e.key === 'Enter' && salvarSenha()}
