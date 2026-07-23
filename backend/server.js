@@ -51,6 +51,7 @@ app.use(helmet({
 
 // ── CORS restrito ──
 app.use(cors({
+  allowedHeaders: ['Content-Type', 'Authorization', 'x-admin-key'],
   origin: (origin, callback) => {
     // Permite requisições sem origin (Render health check, curl, etc)
     if (!origin) return callback(null, true);
